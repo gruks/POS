@@ -1,49 +1,66 @@
-<h1 align="center">Hi 👋, I'm Ayush Kumar</h1>
-<h3 align="center">A passionate Fullstack developer from India</h3>
+# 💳 Point of Sale (POS) System
 
-- 🔭 I’m currently working on **My Research**
+A modern, desktop-based **Point of Sale (POS) application** built using **JavaFX**, **Maven**, and **MongoDB**.  
+Designed for retail and restaurant businesses, this app streamlines **billing**, **inventory management**, and **sales analytics** with a clean and intuitive interface.
 
-- 🌱 I’m currently learning **Javascript, C, Java**
+---
 
-- 👨‍💻 All of my projects are available at [https://github.com/gruks](https://github.com/gruks)
+## 🖥️ Features
 
-- 💬 Ask me about **Java**
+✅ **Sales & Billing**
+- Generate dynamic bills and invoices in real-time.  
+- Handle multiple transactions simultaneously.  
 
-- 📫 How to reach me **notastheticallyayush@gmail.com**
+📦 **Inventory Management**
+- Track products, stock levels, and categories.  
+- Automatic stock updates after each sale.  
 
-<h3 align="left">Connect with me:</h3>
-<p align="left">
-<a href="https://twitter.com/ayushkumar61510" target="blank"><img align="center" src="https://raw.githubusercontent.com/rahuldkjain/github-profile-readme-generator/master/src/images/icons/Social/twitter.svg" alt="ayushkumar61510" height="30" width="40" /></a>
-<a href="https://linkedin.com/in/ayush kumar" target="blank"><img align="center" src="https://raw.githubusercontent.com/rahuldkjain/github-profile-readme-generator/master/src/images/icons/Social/linked-in-alt.svg" alt="ayush kumar" height="30" width="40" /></a>
-</p>
+👥 **Customer Management**
+- Store and manage customer data for repeat purchases and loyalty features.  
 
-<h3 align="left">Languages and Tools:</h3>
-<p align="left"> 
-  <a href="https://www.cprogramming.com/" target="_blank" rel="noreferrer"> 
-    <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/c/c-original.svg" alt="c" width="40" height="40"/> 
-  </a> 
-  <a href="https://www.java.com" target="_blank" rel="noreferrer"> 
-    <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/java/java-original.svg" alt="java" width="40" height="40"/> 
-  </a> 
-  <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank" rel="noreferrer"> 
-    <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/javascript/javascript-original.svg" alt="javascript" width="40" height="40"/> 
-  </a> 
-  <a href="https://nodejs.org" target="_blank" rel="noreferrer"> 
-    <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/nodejs/nodejs-original-wordmark.svg" alt="nodejs" width="40" height="40"/> 
-  </a> 
-  <a href="https://reactjs.org/" target="_blank" rel="noreferrer"> 
-    <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/react/react-original-wordmark.svg" alt="react" width="40" height="40"/> 
-  </a> 
-  <a href="https://nextjs.org/" target="_blank" rel="noreferrer"> 
-    <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/nextjs/nextjs-original-wordmark.svg" alt="nextjs" width="40" height="40"/> 
-  </a> 
-  <a href="https://www.python.org" target="_blank" rel="noreferrer"> 
-    <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/python/python-original.svg" alt="python" width="40" height="40"/> 
-  </a> 
-  <a href="https://www.cplusplus.com/" target="_blank" rel="noreferrer"> 
-    <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/cplusplus/cplusplus-original.svg" alt="cplusplus" width="40" height="40"/> 
-  </a> 
-  <a href="https://www.gnu.org/software/bash/" target="_blank" rel="noreferrer"> 
-    <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/bash/bash-original.svg" alt="bash" width="40" height="40"/> 
-  </a> 
-</p>
+📊 **Sales Analytics Dashboard**
+- Visualize daily, weekly, and monthly sales using JavaFX charts.  
+
+🔐 **User Authentication**
+- Role-based login system (Admin, Cashier).  
+
+💾 **MongoDB Integration**
+- Fast and flexible NoSQL database for all sales and inventory data.  
+
+🎨 **Modern JavaFX UI**
+- Responsive design with custom CSS for a clean, elegant interface.  
+
+🧩 **Modular Architecture**
+- Maven-managed structure for scalability and easy maintenance.
+
+---
+
+## 🧠 Tech Stack
+
+| Layer | Technology |
+|-------|-------------|
+| **Frontend** | JavaFX (FXML, CSS) |
+| **Backend** | Java (Maven Project) |
+| **Database** | MongoDB |
+| **Architecture** | MVC (Model-View-Controller) |
+| **Version Control** | Git & GitHub |
+
+---
+
+## ⚙️ Installation & Setup
+
+### 1 Clone the Repository
+```bash
+git clone https://github.com/your-username/pos-system.git
+cd pos-system
+```
+
+### 2 Build with maven
+```bash
+mvn clean install
+```
+
+### 3 Run
+```bash
+mvn javafx:run
+```
