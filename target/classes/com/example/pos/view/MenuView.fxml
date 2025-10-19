@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" spacing="8">
+    <children>
+      <HBox spacing="8">
+        <children>
+          <TextField promptText="Search menu"/>
+          <ChoiceBox/>
+          <Button text="Add Item"/>
+        </children>
+      </HBox>
+      <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+        <content>
+          <TilePane hgap="8" vgap="8" prefColumns="4">
+            <Label text="Dish 1" styleClass="tile"/>
+          </TilePane>
+        </content>
+      </ScrollPane>
+    </children>
+    <padding><Insets top="12" left="12" right="12" bottom="12"/></padding>
+</VBox>

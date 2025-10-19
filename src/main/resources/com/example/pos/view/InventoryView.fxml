@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.example.pos.controller.InventoryController"
+      stylesheets="@../styles/inventory.css"
+      spacing="16"
+      prefWidth="900">
+                    <padding>
+                        <Insets top="16" right="16" bottom="24" left="16"/>
+                    </padding>
+
+                    <!-- Summary Cards -->
+                    <HBox fx:id="cardsRow" spacing="16">
+                        <children>
+                            <VBox styleClass="card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
+                                <children>
+                                    <Label text="Total Purchases" styleClass="card-title"/>
+                                    <Label text="₹76,000" styleClass="card-value"/>
+                                </children>
+                            </VBox>
+
+                            <VBox styleClass="card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
+                                <children>
+                                    <Label text="Pending Payments" styleClass="card-title"/>
+                                    <Label text="₹27,000" styleClass="card-value warning"/>
+                                </children>
+                            </VBox>
+
+                            <VBox styleClass="card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
+                                <children>
+                                    <Label text="Total Suppliers" styleClass="card-title"/>
+                                    <Label text="24" styleClass="card-value"/>
+                                </children>
+                            </VBox>
+
+                            <VBox styleClass="card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
+                                <children>
+                                    <Label text="This Month" styleClass="card-title"/>
+                                    <Label text="₹2,45,000" styleClass="card-value success"/>
+                                </children>
+                            </VBox>
+                        </children>
+                    </HBox>
+
+                    <!-- Upload Area -->
+                    <VBox spacing="8">
+                        <children>
+                            <Label text="Upload Purchase Invoice" styleClass="section-title"/>
+                            <StackPane fx:id="uploadArea" prefHeight="140" styleClass="upload-area">
+                                <children>
+                                    <Label text="Click to upload or drag and drop&#10;(PDF, Excel, or image files, Max 10MB)"
+                                           textAlignment="CENTER" wrapText="true"/>
+                                    <Button fx:id="btnUpload" text="Choose File" styleClass="primary-button" StackPane.alignment="BOTTOM_CENTER" />
+                                </children>
+                            </StackPane>
+                        </children>
+                    </VBox>
+
+                    <!-- Purchase History -->
+                    <VBox spacing="8">
+                        <children>
+                            <Label text="Purchase History" styleClass="section-title"/>
+                            <TableView fx:id="purchaseTable" prefHeight="420">
+                                <columns>
+                                    <TableColumn fx:id="colSupplier" text="Supplier Name" prefWidth="220"/>
+                                    <TableColumn fx:id="colDate"     text="Date"          prefWidth="140"/>
+                                    <TableColumn fx:id="colItems"    text="Items"         prefWidth="100"/>
+                                    <TableColumn fx:id="colAmount"   text="Amount"        prefWidth="140"/>
+                                    <TableColumn fx:id="colStatus"   text="Payment Status" prefWidth="160"/>
+                                    <TableColumn fx:id="colActions"  text="Actions"       prefWidth="240"/>
+                                </columns>
+                            </TableView>
+                        </children>
+                    </VBox>
+</VBox>

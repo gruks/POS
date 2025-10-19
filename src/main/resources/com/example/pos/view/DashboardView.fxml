@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.*?>
+
+<ScrollPane fx:id="scrollPane"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.example.pos.controller.DashboardController"
+            fitToWidth="true"
+            pannable="true"
+            styleClass="scroll-pane"
+            style="-fx-background-color: #f9fafb;">
+
+    <content>
+        <VBox spacing="20"
+              stylesheets="@../styles/dashboard.css"
+              style="-fx-background-color: #f9fafb;">
+            
+            <padding>
+                <Insets top="16" right="16" bottom="16" left="16"/>
+            </padding>
+
+            <!-- Page Header -->
+            <VBox spacing="4">
+                <children>
+                    <Label text="Dashboard" styleClass="page-title"/>
+                    <Label text="Welcome back! Here's what's happening today" styleClass="page-subtitle"/>
+                </children>
+            </VBox>
+
+            <!-- Summary Cards -->
+            <HBox fx:id="summaryCardsRow" spacing="16">
+                <children>
+                    <VBox styleClass="summary-card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
+                        <children>
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <children>
+                                    <Label text="Total Sales" styleClass="summary-title"/>
+                                    <HBox spacing="4" alignment="CENTER_LEFT">
+                                        <children>
+                                            <Polygon points="0, 0, 0, 8, 6, 4" fill="#22c55e" styleClass="trend-arrow"/>
+                                            <Label text="+12%" styleClass="trend-text positive"/>
+                                        </children>
+                                    </HBox>
+                                </children>
+                            </HBox>
+                            <Label text="₹45,280" styleClass="summary-value"/>
+                        </children>
+                    </VBox>
+
+                    <VBox styleClass="summary-card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
+                        <children>
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <children>
+                                    <Label text="Total Orders" styleClass="summary-title"/>
+                                    <HBox spacing="4" alignment="CENTER_LEFT">
+                                        <children>
+                                            <Polygon points="0, 0, 0, 8, 6, 4" fill="#22c55e" styleClass="trend-arrow"/>
+                                            <Label text="↑ 12.5%" styleClass="trend-text positive"/>
+                                        </children>
+                                    </HBox>
+                                </children>
+                            </HBox>
+                            <Label text="156" styleClass="summary-value"/>
+                        </children>
+                    </VBox>
+
+                    <VBox styleClass="summary-card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
+                        <children>
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <children>
+                                    <Label text="Pending Orders" styleClass="summary-title"/>
+                                    <HBox spacing="4" alignment="CENTER_LEFT">
+                                        <children>
+                                            <Polygon points="0, 0, 0, 8, 6, 4" fill="#f59e0b" styleClass="trend-arrow"/>
+                                            <Label text="↑ 8.2%" styleClass="trend-text warning"/>
+                                        </children>
+                                    </HBox>
+                                </children>
+                            </HBox>
+                            <Label text="12" styleClass="summary-value"/>
+                        </children>
+                    </VBox>
+
+                    <VBox styleClass="summary-card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
+                        <children>
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <children>
+                                    <Label text="Active Tables" styleClass="summary-title"/>
+                                    <Rectangle width="16" height="16" fill="#6b7280" styleClass="icon-rect"/>
+                                </children>
+                            </HBox>
+                            <Label text="18/25" styleClass="summary-value"/>
+                        </children>
+                    </VBox>
+
+                    <VBox styleClass="summary-card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
+                        <children>
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <children>
+                                    <Label text="Low Stock Items" styleClass="summary-title"/>
+                                    <Rectangle width="16" height="16" fill="#6b7280" styleClass="icon-rect"/>
+                                </children>
+                            </HBox>
+                            <Label text="8" styleClass="summary-value"/>
+                        </children>
+                    </VBox>
+                </children>
+            </HBox>
+
+            <!-- Quick Actions -->
+            <HBox spacing="16" alignment="CENTER_LEFT">
+                <children>
+                    <Button fx:id="btnNewBill" text="New Bill" styleClass="quick-action-button primary">
+                        <graphic>
+                            <HBox spacing="4" alignment="CENTER">
+                                <children>
+                                    <Polygon points="0, 0, 0,12, 8,6" fill="white"/>
+                                    <Label text="+" styleClass="action-icon"/>
+                                </children>
+                            </HBox>
+                        </graphic>
+                    </Button>
+                    <Button fx:id="btnKOT" text="KOT" styleClass="quick-action-button success">
+                        <graphic>
+                            <Label text="0" styleClass="action-count"/>
+                        </graphic>
+                    </Button>
+                    <Button fx:id="btnInventory" text="Inventory" styleClass="quick-action-button warning">
+                        <graphic>
+                            <Label text="0" styleClass="action-count"/>
+                        </graphic>
+                    </Button>
+                    <Button fx:id="btnOnlineOrders" text="Online Orders" styleClass="quick-action-button info">
+                        <graphic>
+                            <Label text="0" styleClass="action-count"/>
+                        </graphic>
+                    </Button>
+                </children>
+            </HBox>
+
+            <!-- Charts Section -->
+            <HBox spacing="16" VBox.vgrow="ALWAYS">
+                <children>
+                    <!-- Daily Sales Trend Chart -->
+                    <VBox styleClass="chart-container" HBox.hgrow="ALWAYS">
+                        <children>
+                            <Label text="Daily Sales Trend" styleClass="chart-title"/>
+                            <LineChart fx:id="salesChart" prefHeight="300">
+                                <xAxis>
+                                    <CategoryAxis fx:id="salesXAxis" label="Day"/>
+                                </xAxis>
+                                <yAxis>
+                                    <NumberAxis fx:id="salesYAxis" label="Sales (₹)" lowerBound="0" upperBound="10000" tickUnit="2500"/>
+                                </yAxis>
+                            </LineChart>
+                        </children>
+                    </VBox>
+
+                    <!-- Category-wise Sales Chart -->
+                    <VBox styleClass="chart-container" prefWidth="420">
+                        <children>
+                            <Label text="Category-wise Sales" styleClass="chart-title"/>
+                            <PieChart fx:id="categoryChart" prefHeight="300"/>
+                        </children>
+                    </VBox>
+                </children>
+            </HBox>
+
+            <!-- Recent Orders -->
+            <VBox styleClass="table-container">
+                <children>
+                    <HBox spacing="12" alignment="CENTER_LEFT">
+                        <children>
+                            <Label text="Recent Orders" styleClass="section-title"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button fx:id="btnViewAllOrders" text="View All" styleClass="secondary-button"/>
+                        </children>
+                    </HBox>
+                    <TableView fx:id="recentOrdersTable" prefHeight="260">
+                        <columns>
+                            <TableColumn fx:id="colOrderId" text="Order ID" prefWidth="120"/>
+                            <TableColumn fx:id="colTableType" text="Table/Type" prefWidth="200"/>
+                            <TableColumn fx:id="colAmount" text="Amount" prefWidth="160"/>
+                            <TableColumn fx:id="colStatus" text="Status" prefWidth="140"/>
+                            <TableColumn fx:id="colTime" text="Time" prefWidth="140"/>
+                        </columns>
+                    </TableView>
+                </children>
+            </VBox>
+
+        </VBox>
+    </content>
+</ScrollPane>

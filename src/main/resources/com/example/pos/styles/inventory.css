@@ -1,0 +1,199 @@
+/* ====== Root ====== */
+#root {
+	-fx-background-color: #f5f7fb;
+}
+
+/* ====== Sidebar ====== */
+#sidebar {
+	-fx-background-color: #111827; /* slate-900 */
+	-fx-padding: 16 12 16 12;
+	-fx-spacing: 8;
+}
+
+.sidebar-title {
+	-fx-text-fill: #ffffff;
+	-fx-font-size: 18px;
+	-fx-font-weight: bold;
+	-fx-padding: 0 0 6 4;
+	-fx-opacity: 0.9;
+}
+
+.menu-button {
+	-fx-background-color: transparent;
+	-fx-text-fill: #e5e7eb; /* gray-200 */
+	-fx-alignment: CENTER_LEFT;
+	-fx-padding: 10 12 10 12;
+	-fx-background-radius: 8;
+	-fx-font-size: 14px;
+	-fx-cursor: hand;
+}
+
+.menu-button:hover {
+	-fx-background-color: rgba(255,255,255,0.08);
+	-fx-text-fill: #ffffff;
+}
+
+.menu-button:focused {
+	-fx-background-insets: 0;
+	-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 6, 0.2, 0, 1);
+}
+
+.menu-button-active {
+	-fx-background-color: #1d4ed8; /* indigo-600 */
+	-fx-text-fill: #ffffff;
+	-fx-font-weight: bold;
+}
+
+/* ====== Header ====== */
+#headerBar {
+	-fx-background-color: #ffffff;
+	-fx-border-color: #e5e7eb;
+	-fx-border-width: 0 0 1 0;
+}
+
+.app-title {
+	-fx-font-size: 18px;
+	-fx-font-weight: bold;
+	-fx-text-fill: #0f172a; /* slate-900 */
+}
+
+.search-field {
+	-fx-background-radius: 8;
+	-fx-border-radius: 8;
+	-fx-background-color: #f3f4f6;
+	-fx-prompt-text-fill: #9ca3af;
+	-fx-text-fill: #111827;
+	-fx-padding: 8 12 8 12;
+	-fx-border-color: transparent;
+}
+.search-field:focused {
+	-fx-background-color: #ffffff;
+	-fx-border-color: #3b82f6;
+	-fx-effect: dropshadow(gaussian, rgba(59,130,246,0.25), 8, 0.25, 0, 0);
+}
+
+.user-name {
+	-fx-text-fill: #334155;
+}
+
+/* ====== Cards ====== */
+.card {
+	-fx-background-color: #ffffff;
+	-fx-background-radius: 12;
+	-fx-padding: 12;
+	-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 12, 0.2, 0, 2);
+}
+
+.card-title {
+	-fx-text-fill: #6b7280;
+	-fx-font-size: 12px;
+	-fx-font-weight: 600;
+	-fx-letter-spacing: 0.3px;
+}
+
+.card-value {
+	-fx-text-fill: #0f172a;
+	-fx-font-size: 22px;
+	-fx-font-weight: bold;
+}
+
+.card-value.warning {
+	-fx-text-fill: #d97706; /* amber-600 */
+}
+
+.card-value.success {
+	-fx-text-fill: #16a34a; /* green-600 */
+}
+
+/* ====== Sections ====== */
+.section-title {
+	-fx-font-size: 14px;
+	-fx-text-fill: #111827;
+	-fx-font-weight: bold;
+}
+
+/* ====== Upload Area ====== */
+.upload-area {
+	-fx-background-color: rgba(59,130,246,0.06);
+	-fx-border-color: #93c5fd;
+	-fx-border-style: segments(10, 5, 5, 5) line-cap round;
+	-fx-border-radius: 12;
+	-fx-background-radius: 12;
+	-fx-alignment: center;
+}
+
+.upload-area .label {
+	-fx-text-fill: #1f2937;
+	-fx-opacity: 0.9;
+	-fx-font-size: 13px;
+}
+
+.primary-button {
+	-fx-background-color: #2563eb;
+	-fx-text-fill: white;
+	-fx-background-radius: 8;
+	-fx-padding: 8 16 8 16;
+	-fx-font-weight: 600;
+	-fx-cursor: hand;
+	-fx-border-color: transparent;
+}
+.primary-button:hover {
+	-fx-background-color: #1d4ed8;
+}
+.primary-button:pressed {
+	-fx-background-color: #1e40af;
+}
+
+/* ====== Table ====== */
+.table-view {
+	-fx-background-color: transparent;
+	-fx-background-insets: 0;
+	-fx-padding: 0;
+	-fx-border-color: #e5e7eb;
+	-fx-border-radius: 10;
+	-fx-background-radius: 10;
+}
+.table-view .column-header-background {
+	-fx-background-color: #f3f4f6;
+	-fx-background-radius: 10 10 0 0;
+	-fx-padding: 8 0 8 0;
+}
+.table-view .column-header, .table-view .filler {
+	-fx-size: 36px;
+	-fx-border-color: transparent;
+}
+.table-view .column-header .label {
+	-fx-text-fill: #374151;
+	-fx-font-weight: bold;
+}
+.table-row-cell:odd {
+	-fx-background-color: #ffffff;
+}
+.table-row-cell:even {
+	-fx-background-color: #f9fafb;
+}
+.table-row-cell:hover {
+	-fx-background-color: #eef2ff;
+}
+.table-row-cell:selected {
+	-fx-background-color: #dbeafe;
+}
+.action-button {
+	-fx-background-radius: 18;
+	-fx-padding: 6 12 6 12;
+	-fx-background-color: #eef2ff;
+	-fx-text-fill: #1e3a8a;
+	-fx-cursor: hand;
+	-fx-border-color: transparent;
+}
+.action-button:hover {
+	-fx-background-color: #e0e7ff;
+}
+.action-button.success {
+	-fx-background-color: #dcfce7;
+	-fx-text-fill: #14532d;
+}
+.action-button.warning {
+	-fx-background-color: #fef3c7;
+	-fx-text-fill: #92400e;
+}

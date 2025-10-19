@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane fx:id="root" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.example.pos.controller.MainController">
+    <top>
+        <HBox spacing="16" styleClass="topbar" BorderPane.alignment="CENTER_LEFT">
+            <children>
+                <Label text="RestaurantPOS" styleClass="brand"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <HBox spacing="12" alignment="CENTER_RIGHT">
+                    <children>
+                        <Label text="Today"/>
+                        <ChoiceBox fx:id="outletChoice"/>
+                        <Button text="Search"/>
+                        <Button text="Notifications"/>
+                        <Button text="Admin User"/>
+                    </children>
+                </HBox>
+            </children>
+            <padding><Insets top="12" bottom="12" left="16" right="16"/></padding>
+        </HBox>
+    </top>
+
+    <left>
+        <VBox spacing="8" styleClass="sidebar" prefWidth="220">
+            <children>
+                <Button fx:id="navDashboard" text="Dashboard" onAction="#onOpenDashboard" styleClass="nav-btn"/>
+                <Button fx:id="navBilling" text="Billing" onAction="#onOpenBilling" styleClass="nav-btn"/>
+                <Button fx:id="navTransactions" text="Transactions" onAction="#onOpenTransactions" styleClass="nav-btn"/>
+                <Button fx:id="navInventory" text="Inventory" onAction="#onOpenInventory" styleClass="nav-btn"/>
+                <Button fx:id="navMenu" text="Menu" onAction="#onOpenMenu" styleClass="nav-btn"/>
+                <Button fx:id="navTables" text="Tables" onAction="#onOpenTables" styleClass="nav-btn"/>
+                <Button fx:id="navKOT" text="KOT" onAction="#onOpenKOT" styleClass="nav-btn"/>
+                <Button fx:id="navReports" text="Reports" onAction="#onOpenReports" styleClass="nav-btn"/>
+                <Region VBox.vgrow="ALWAYS"/>
+            </children>
+            <padding><Insets top="16" left="12" right="12" bottom="16"/></padding>
+        </VBox>
+    </left>
+
+    <center>
+        <StackPane fx:id="contentArea" styleClass="content"/>
+    </center>
+</BorderPane>

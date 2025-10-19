@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.*?>
+
+<VBox xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.example.pos.controller.TablesController"
+      stylesheets="@../styles/tables.css"
+      spacing="16"
+      style="-fx-background-color: #f9fafb;">
+    
+    <padding>
+        <Insets top="16" right="16" bottom="16" left="16"/>
+    </padding>
+
+    <!-- Page Header -->
+    <HBox spacing="12" alignment="CENTER_LEFT">
+        <children>
+            <VBox spacing="4">
+                <children>
+                    <Label text="Table Organization" styleClass="page-title"/>
+                    <Label text="Manage restaurant tables and seating" styleClass="page-subtitle"/>
+                </children>
+            </VBox>
+            <Region HBox.hgrow="ALWAYS"/>
+            <HBox spacing="8" alignment="CENTER_RIGHT">
+                <children>
+                    <Button fx:id="btnRefresh" text="Refresh" styleClass="secondary-button"/>
+                    <Button fx:id="btnAddTable" text="+ Add New Table" styleClass="primary-button"/>
+                </children>
+            </HBox>
+        </children>
+    </HBox>
+
+    <!-- Summary Cards -->
+    <HBox fx:id="cardsRow" spacing="16">
+        <children>
+            <VBox fx:id="cardTotal" styleClass="summary-card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
+                <children>
+                    <Label text="Total Tables" styleClass="summary-title"/>
+                    <Label text="12" styleClass="summary-value"/>
+                </children>
+            </VBox>
+
+            <VBox fx:id="cardAvailable" styleClass="summary-card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
+                <children>
+                    <HBox spacing="6" alignment="CENTER_LEFT">
+                        <children>
+                            <Label text="Available" styleClass="summary-title"/>
+                            <Circle radius="4" fill="#22c55e"/>
+                        </children>
+                    </HBox>
+                    <Label text="5" styleClass="summary-value"/>
+                </children>
+            </VBox>
+
+            <VBox fx:id="cardOccupied" styleClass="summary-card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
+                <children>
+                    <HBox spacing="6" alignment="CENTER_LEFT">
+                        <children>
+                            <Label text="Occupied" styleClass="summary-title"/>
+                            <Circle radius="4" fill="#ef4444"/>
+                        </children>
+                    </HBox>
+                    <Label text="5" styleClass="summary-value"/>
+                </children>
+            </VBox>
+
+            <VBox fx:id="cardReserved" styleClass="summary-card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
+                <children>
+                    <HBox spacing="6" alignment="CENTER_LEFT">
+                        <children>
+                            <Label text="Reserved" styleClass="summary-title"/>
+                            <Circle radius="4" fill="#facc15"/>
+                        </children>
+                    </HBox>
+                    <Label text="2" styleClass="summary-value"/>
+                </children>
+            </VBox>
+        </children>
+    </HBox>
+
+    <!-- Status Legend -->
+    <HBox styleClass="legend" spacing="20" alignment="CENTER_LEFT">
+        <children>
+            <HBox alignment="CENTER_LEFT" spacing="6">
+                <children>
+                    <Circle radius="5" fill="#22c55e"/>
+                    <Label text="Available" styleClass="legend-text"/>
+                </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" spacing="6">
+                <children>
+                    <Circle radius="5" fill="#ef4444"/>
+                    <Label text="Occupied" styleClass="legend-text"/>
+                </children>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" spacing="6">
+                <children>
+                    <Circle radius="5" fill="#facc15"/>
+                    <Label text="Reserved" styleClass="legend-text"/>
+                </children>
+            </HBox>
+        </children>
+    </HBox>
+
+    <!-- Table Grid -->
+    <GridPane fx:id="tableGrid" hgap="16" vgap="16" VBox.vgrow="ALWAYS">
+        <columnConstraints>
+            <ColumnConstraints percentWidth="33.33"/>
+            <ColumnConstraints percentWidth="33.33"/>
+            <ColumnConstraints percentWidth="33.33"/>
+        </columnConstraints>
+        <rowConstraints>
+            <RowConstraints vgrow="NEVER"/>
+            <RowConstraints vgrow="NEVER"/>
+            <RowConstraints vgrow="NEVER"/>
+            <RowConstraints vgrow="NEVER"/>
+        </rowConstraints>
+    </GridPane>
+</VBox>

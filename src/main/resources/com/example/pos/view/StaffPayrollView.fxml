@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.example.pos.controller.StaffPayrollController"
+      stylesheets="@../styles/staff_payroll.css"
+      spacing="16"
+      prefWidth="1200"
+      style="-fx-background-color: #f9fafb;">
+    
+    <padding>
+        <Insets top="16" right="16" bottom="16" left="16"/>
+    </padding>
+
+    <!-- Page Header -->
+    <HBox spacing="12" alignment="CENTER_LEFT">
+        <children>
+            <VBox spacing="4">
+                <children>
+                    <Label text="Staff &amp; Payroll" styleClass="page-title"/>
+                    <Label text="Manage staff attendance and payroll" styleClass="page-subtitle"/>
+                </children>
+            </VBox>
+            <Region HBox.hgrow="ALWAYS"/>
+            <HBox spacing="8" alignment="CENTER_RIGHT">
+                <children>
+                    <Button fx:id="btnExport" text="Export Attendance" styleClass="primary-button"/>
+                    <Button fx:id="btnAddStaff" text="Add Staff" styleClass="primary-button"/>
+                </children>
+            </HBox>
+        </children>
+    </HBox>
+
+    <!-- Summary Cards -->
+    <HBox fx:id="cardsRow" spacing="16">
+        <children>
+            <VBox styleClass="card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
+                <children>
+                    <Label text="Total Employees" styleClass="card-title"/>
+                    <Label text="6" styleClass="card-value"/>
+                </children>
+            </VBox>
+
+            <VBox styleClass="card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
+                <children>
+                    <Label text="Checked-in Today" styleClass="card-title"/>
+                    <Label text="4" styleClass="card-value"/>
+                </children>
+            </VBox>
+
+            <VBox styleClass="card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
+                <children>
+                    <Label text="On Leave" styleClass="card-title"/>
+                    <Label text="1" styleClass="card-value"/>
+                </children>
+            </VBox>
+
+            <VBox styleClass="card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
+                <children>
+                    <Label text="Pending Salary" styleClass="card-title"/>
+                    <Label text="₹45,000" styleClass="card-value"/>
+                </children>
+            </VBox>
+        </children>
+    </HBox>
+
+    <!-- Tabs Section -->
+    <TabPane fx:id="tabPane" styleClass="tab-pane">
+        <tabs>
+            <!-- Attendance Tab -->
+            <Tab text="Attendance" fx:id="tabAttendance">
+                <content>
+                    <VBox spacing="12">
+                        <children>
+                            <!-- Legend -->
+                            <HBox spacing="16" alignment="CENTER_LEFT">
+                                <children>
+                                    <Label text="Checked-in: 4" styleClass="legend-item status-green"/>
+                                    <Label text="On Break: 1" styleClass="legend-item status-yellow"/>
+                                    <Label text="On Leave: 1" styleClass="legend-item status-red"/>
+                                </children>
+                            </HBox>
+
+                            <!-- Attendance Table -->
+                            <TableView fx:id="attendanceTable" prefHeight="400">
+                                <columns>
+                                    <TableColumn fx:id="colName" text="Name" prefWidth="180"/>
+                                    <TableColumn fx:id="colRole" text="Role" prefWidth="120"/>
+                                    <TableColumn fx:id="colShift" text="Shift" prefWidth="100"/>
+                                    <TableColumn fx:id="colStatus" text="Status" prefWidth="120"/>
+                                    <TableColumn fx:id="colCheckInTime" text="Check-in Time" prefWidth="140"/>
+                                    <TableColumn fx:id="colMarkAttendance" text="Mark Attendance" prefWidth="160"/>
+                                </columns>
+                            </TableView>
+                        </children>
+                    </VBox>
+                </content>
+            </Tab>
+
+            <!-- Payroll Tab -->
+            <Tab text="Payroll" fx:id="tabPayroll">
+                <content>
+                    <VBox spacing="12">
+                        <children>
+                            <Label text="Payroll Management" styleClass="section-title"/>
+                            <Label text="Payroll features will be implemented here" styleClass="placeholder-text"/>
+                        </children>
+                    </VBox>
+                </content>
+            </Tab>
+
+            <!-- Leaves Tab -->
+            <Tab text="Leaves" fx:id="tabLeaves">
+                <content>
+                    <VBox spacing="12">
+                        <children>
+                            <Label text="Leave Management" styleClass="section-title"/>
+                            <Label text="Leave management features will be implemented here" styleClass="placeholder-text"/>
+                        </children>
+                    </VBox>
+                </content>
+            </Tab>
+        </tabs>
+    </TabPane>
+</VBox>

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" 
+      fx:controller="com.example.pos.controller.TransactionHistoryController"
+      stylesheets="@../styles/transaction.css" styleClass="main-container">
+    
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+    
+    <children>
+        <!-- Header Section -->
+        <HBox alignment="CENTER_LEFT" spacing="15">
+            <children>
+                <Label text="Transaction History" styleClass="page-title">
+                    <font>
+                        <Font name="System Bold" size="22"/>
+                    </font>
+                </Label>
+                <Label text="View and manage all transactions" styleClass="page-subtitle">
+                    <font>
+                        <Font size="13"/>
+                    </font>
+                </Label>
+                
+                <Region HBox.hgrow="ALWAYS"/>
+                
+                <!-- Export Buttons -->
+                <Button fx:id="btnExportExcel" text="Export to Excel" styleClass="export-button"/>
+                <Button fx:id="btnExportPDF" text="Export to PDF" styleClass="export-button"/>
+            </children>
+        </HBox>
+        
+        <!-- Filter Section -->
+        <HBox alignment="CENTER_LEFT" spacing="12" styleClass="filter-bar">
+            <padding>
+                <Insets top="12" right="15" bottom="12" left="15"/>
+            </padding>
+            
+            <children>
+                <TextField fx:id="txtSearch" promptText="Search by Bill ID or Customer" 
+                          prefWidth="280" styleClass="search-field"/>
+                
+                <DatePicker fx:id="dateFrom" promptText="From Date" prefWidth="150"/>
+                <DatePicker fx:id="dateTo" promptText="To Date" prefWidth="150"/>
+                
+                <Region HBox.hgrow="ALWAYS"/>
+                
+                <Label text="Payment Mode:"/>
+                <ComboBox fx:id="cmbPaymentMode" prefWidth="140" styleClass="filter-combo"/>
+                
+                <Label text="Status:"/>
+                <ComboBox fx:id="cmbStatus" prefWidth="130" styleClass="filter-combo"/>
+                
+                <Button fx:id="btnClearFilters" text="Clear Filters" styleClass="clear-button"/>
+            </children>
+        </HBox>
+        
+        <!-- Table Section -->
+        <TableView fx:id="tableTransactions" VBox.vgrow="ALWAYS" styleClass="transaction-table">
+            <columns>
+                <TableColumn fx:id="colBillNumber" text="Bill Number" prefWidth="100"/>
+                <TableColumn fx:id="colDateTime" text="Date &amp; Time" prefWidth="140"/>
+                <TableColumn fx:id="colCustomer" text="Customer" prefWidth="150"/>
+                <TableColumn fx:id="colType" text="Type" prefWidth="100"/>
+                <TableColumn fx:id="colAmount" text="Amount" prefWidth="110"/>
+                <TableColumn fx:id="colPaymentMode" text="Payment Mode" prefWidth="120"/>
+                <TableColumn fx:id="colStatus" text="Status" prefWidth="120"/>
+                <TableColumn fx:id="colActions" text="Actions" prefWidth="160"/>
+            </columns>
+        </TableView>
+        
+        <!-- Pagination -->
+        <HBox alignment="CENTER_RIGHT" spacing="10" styleClass="pagination-bar">
+            <children>
+                <Label fx:id="lblPaginationInfo" text="Showing 1 to 12 of 150 results" 
+                       styleClass="pagination-info">
+                    <font>
+                        <Font size="12"/>
+                    </font>
+                </Label>
+                
+                <Region HBox.hgrow="ALWAYS"/>
+                
+                <Button fx:id="btnPrevious" text="Previous" styleClass="pagination-button"/>
+                <Button fx:id="btnPage1" text="1" styleClass="pagination-button, pagination-active"/>
+                <Button fx:id="btnPage2" text="2" styleClass="pagination-button"/>
+                <Button fx:id="btnPage3" text="3" styleClass="pagination-button"/>
+                <Button fx:id="btnNext" text="Next" styleClass="pagination-button"/>
+            </children>
+        </HBox>
+    </children>
+</VBox>

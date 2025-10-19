@@ -1,0 +1,44 @@
+
+.root {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-background-color: #f6f7fb;
+}
+
+.topbar {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #eceff5;
+    -fx-border-width: 0 0 1 0;
+}
+.brand {
+    -fx-font-size: 18px;
+    -fx-font-weight: 700;
+}
+.sidebar {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #eceff5; 
+    -fx-border-width: 0 1 0 0;
+}
+.nav-btn {
+    -fx-background-color: transparent;
+    -fx-alignment: CENTER_LEFT;
+    -fx-padding: 10 12 10 12;
+}
+.nav-btn:hover { -fx-background-color: #eceff5; }
+
+.content { -fx-padding: 12; }
+
+.dashboard .titled-pane > .title {
+    -fx-background-color: #ffffff;
+}
+.metric { -fx-font-size: 24px; -fx-font-weight: 700; }
+
+.tile { 
+    -fx-background-color: #ffffff; 
+    -fx-padding: 16; 
+    -fx-border-color: #eceff5; 
+    -fx-border-radius: 8; 
+}
+
+.panel { -fx-background-color: #ffffff; }
+
+.h2 { -fx-font-size: 18px; -fx-font-weight: 600; }
