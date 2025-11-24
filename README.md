@@ -51,8 +51,8 @@ Designed for retail and restaurant businesses, this app streamlines **billing**,
 
 ### 1 Clone the Repository
 ```bash
-git clone https://github.com/your-username/pos-system.git
-cd pos-system
+https://github.com/gruks/POS.git
+cd gruks
 ```
 
 ### 2 Build with maven
