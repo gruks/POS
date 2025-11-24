@@ -23,11 +23,11 @@
                     </children>
                 </HBox>
                 
-                <!-- Table Number -->
+                <!-- Table Selection -->
                 <HBox spacing="8" alignment="CENTER_LEFT">
                     <children>
                         <Label text="Table:"/>
-                        <TextField fx:id="tableNumberField" promptText="Table number" prefWidth="100"/>
+                        <ComboBox fx:id="tableChoice" promptText="Select table" prefWidth="140"/>
                     </children>
                 </HBox>
                 
@@ -57,9 +57,9 @@
                 <!-- Menu Items Grid -->
                 <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
                     <content>
-                        <TilePane fx:id="menuGrid" hgap="8" vgap="8" prefColumns="2">
+                        <TilePane fx:id="menuGrid" hgap="12" vgap="12" prefColumns="3" style="-fx-padding:8;">
                             <!-- Item tiles go here dynamically -->
-                            <VBox styleClass="tile" spacing="4" alignment="CENTER">
+                            <VBox styleClass="tile" spacing="6" alignment="CENTER" style="-fx-background-color:#f9fafb; -fx-border-color:#e5e7eb; -fx-border-radius:8; -fx-background-radius:8; -fx-padding:10;">
                                 <children>
                                     <Label text="🍽️" style="-fx-font-size: 32px;"/>
                                     <Label text="Sample Item" styleClass="item-name"/>
@@ -76,7 +76,11 @@
     </left>
     
     <center>
-        <VBox spacing="8">
+        <TabPane fx:id="billTabs" tabClosingPolicy="ALL_TABS">
+            <tabs>
+                <Tab text="Bill #1" closable="true">
+                    <content>
+                        <VBox spacing="8">
             <children>
                 <!-- Order Header -->
                 <HBox spacing="8" alignment="CENTER_LEFT" styleClass="order-header">
@@ -167,7 +171,11 @@
                 </VBox>
             </children>
             <padding><Insets top="12" left="12" right="12" bottom="12"/></padding>
-        </VBox>
+                        </VBox>
+                    </content>
+                </Tab>
+            </tabs>
+        </TabPane>
     </center>
     
 </BorderPane>
