@@ -74,23 +74,15 @@
             </columns>
         </TableView>
         
-        <!-- Pagination -->
+        <!-- Results Summary -->
         <HBox alignment="CENTER_RIGHT" spacing="10" styleClass="pagination-bar">
             <children>
-                <Label fx:id="lblPaginationInfo" text="Showing 1 to 12 of 150 results" 
+                <Label fx:id="lblPaginationInfo" text="Showing 0 results" 
                        styleClass="pagination-info">
                     <font>
                         <Font size="12"/>
                     </font>
                 </Label>
-                
-                <Region HBox.hgrow="ALWAYS"/>
-                
-                <Button fx:id="btnPrevious" text="Previous" styleClass="pagination-button"/>
-                <Button fx:id="btnPage1" text="1" styleClass="pagination-button, pagination-active"/>
-                <Button fx:id="btnPage2" text="2" styleClass="pagination-button"/>
-                <Button fx:id="btnPage3" text="3" styleClass="pagination-button"/>
-                <Button fx:id="btnNext" text="Next" styleClass="pagination-button"/>
             </children>
         </HBox>
     </children>

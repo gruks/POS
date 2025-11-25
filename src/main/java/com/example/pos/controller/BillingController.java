@@ -22,8 +22,10 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -40,6 +42,9 @@ import javafx.scene.layout.VBox;
 
 public class BillingController {
 
+    private static final String PAYMENT_SELECTED_STYLE = "-fx-background-color: #3b82f6; -fx-text-fill: white;";
+    private static final BillingViewState VIEW_STATE = new BillingViewState();
+
     // Left Panel - Menu Items
     @FXML
     private ToggleButton dineInBtn;
@@ -50,7 +55,9 @@ public class BillingController {
     @FXML
     private ToggleButton deliveryBtn;
     @FXML
-    private javafx.scene.control.ComboBox<String> tableChoice;
+    private ToggleGroup orderTypeGroup;
+    @FXML
+    private ComboBox<String> tableChoice;
     @FXML
     private TextField searchField;
     @FXML
@@ -103,21 +110,24 @@ public class BillingController {
     private Button upiBtn;
     @FXML
     private Button settleBtn;
+    @FXML
+    private ToggleGroup categoryGroup;
 
     // Tabs
     @FXML 
-    private javafx.scene.control.TabPane billTabs;
+    private TabPane billTabs;
 
     // Data
     private ObservableList<OrderItem> orderItems = FXCollections.observableArrayList();
     private ObservableList<MenuItem> menuItems = FXCollections.observableArrayList();
     private List<String> categories = new ArrayList<>();
-    private ToggleGroup categoryToggleGroup = new ToggleGroup();
     private String selectedCategory = "All";
+    private String selectedOrderType = "Dine-In";
     private double subtotal = 0.0;
     private double taxRate = 0.05; // 5% tax
     private String selectedPaymentMethod = "Cash";
     private List<BillTab> billTabsList = new ArrayList<>();
+    private boolean restoringState = false;
 
     // Mongo
     private static MongoClient mongoClient;
@@ -128,6 +138,7 @@ public class BillingController {
     @FXML
     public void initialize() {
         System.out.println("BillingController initialized");
+        restoringState = true;
 
         // Mongo setup
         if (mongoClient == null) {
@@ -156,7 +167,7 @@ public class BillingController {
         // Setup event handlers
         setupEventHandlers();
 
-        // Initialize billing
+        // Initialize billing (will be overwritten if we restore state)
         updateBillInfo();
         updateBilling();
 
@@ -170,6 +181,111 @@ public class BillingController {
         // Make the first tab non-closable or handle tab close events
         if (billTabs != null && !billTabs.getTabs().isEmpty()) {
             billTabs.getTabs().get(0).setClosable(false);
+        }
+
+        if (orderTypeGroup != null) {
+            orderTypeGroup.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
+                if (newToggle instanceof ToggleButton toggleButton) {
+                    selectedOrderType = toggleButton.getText();
+                    if (!restoringState) {
+                        persistState();
+                    }
+                }
+            });
+        }
+
+        if (customerNameField != null) {
+            customerNameField.textProperty().addListener((obs, oldVal, newVal) -> {
+                if (!restoringState) {
+                    persistState();
+                }
+            });
+        }
+
+        if (tableChoice != null) {
+            tableChoice.valueProperty().addListener((obs, oldVal, newVal) -> {
+                if (!restoringState) {
+                    persistState();
+                }
+            });
+        }
+
+        restoringState = false;
+        restoreState();
+        persistState();
+    }
+
+    private void restoreState() {
+        restoringState = true;
+
+        if (VIEW_STATE.mainOrderItems != null && !VIEW_STATE.mainOrderItems.isEmpty()) {
+            orderItems.setAll(fromSnapshots(VIEW_STATE.mainOrderItems));
+            updateBilling();
+        }
+
+        if (customerNameField != null) {
+            customerNameField.setText(VIEW_STATE.customerName);
+        }
+
+        if (tableChoice != null && VIEW_STATE.tableSelection != null) {
+            tableChoice.setValue(VIEW_STATE.tableSelection);
+        }
+
+        selectedPaymentMethod = VIEW_STATE.paymentMethod;
+        setPaymentMethod(selectedPaymentMethod);
+
+        selectedOrderType = VIEW_STATE.orderType;
+        if (orderTypeGroup != null) {
+            orderTypeGroup.getToggles().stream()
+                    .filter(t -> t instanceof ToggleButton)
+                    .map(t -> (ToggleButton) t)
+                    .filter(btn -> btn.getText().equals(selectedOrderType))
+                    .findFirst()
+                    .ifPresent(toggle -> toggle.setSelected(true));
+        }
+
+        if (billNumberLabel != null && VIEW_STATE.billLabel != null && !VIEW_STATE.billLabel.isBlank()) {
+            billNumberLabel.setText(VIEW_STATE.billLabel);
+        }
+        if (orderDateLabel != null && VIEW_STATE.orderDate != null && !VIEW_STATE.orderDate.isBlank()) {
+            orderDateLabel.setText(VIEW_STATE.orderDate);
+        }
+
+        if (VIEW_STATE.extraTabs != null && !VIEW_STATE.extraTabs.isEmpty()) {
+            for (TabSnapshot snapshot : VIEW_STATE.extraTabs) {
+                BillTab tab = new BillTab(billTabsList.size() + 2, this);
+                billTabsList.add(tab);
+                billTabs.getTabs().add(tab.tab);
+                tab.loadSnapshot(snapshot);
+            }
+        }
+
+        restoringState = false;
+    }
+
+    private void persistState() {
+        if (restoringState) {
+            return;
+        }
+
+        VIEW_STATE.mainOrderItems = toSnapshots(orderItems);
+        VIEW_STATE.customerName = customerNameField != null ? customerNameField.getText() : "";
+        VIEW_STATE.tableSelection = tableChoice != null ? tableChoice.getValue() : null;
+        VIEW_STATE.paymentMethod = selectedPaymentMethod;
+        VIEW_STATE.orderType = selectedOrderType;
+        VIEW_STATE.billLabel = billNumberLabel != null ? billNumberLabel.getText() : "";
+        VIEW_STATE.orderDate = orderDateLabel != null ? orderDateLabel.getText() : "";
+
+        VIEW_STATE.extraTabs = new ArrayList<>();
+        for (BillTab bt : billTabsList) {
+            TabSnapshot snapshot = new TabSnapshot();
+            snapshot.items = toSnapshots(bt.orderItems);
+            snapshot.customerName = bt.customerField != null ? bt.customerField.getText() : "";
+            snapshot.paymentMethod = bt.paymentMethod;
+            snapshot.title = bt.tab.getText();
+            snapshot.billNumber = bt.billNumber;
+            snapshot.dateLabel = bt.dateLabel != null ? bt.dateLabel.getText() : "";
+            VIEW_STATE.extraTabs.add(snapshot);
         }
     }
 
@@ -195,26 +311,28 @@ public class BillingController {
     }
 
     private void createCategoryFilterButtons() {
-        if (categoryFilterPane == null) {
-            System.err.println("categoryFilterPane is null - check FXML");
+        if (categoryFilterPane == null || categoryGroup == null) {
+            System.err.println("Category UI references are null - check FXML");
             return;
         }
 
+        categoryGroup.getToggles().clear();
         categoryFilterPane.getChildren().clear();
 
         for (String category : categories) {
-            ToggleButton btn = new ToggleButton(category);
-            btn.setToggleGroup(categoryToggleGroup);
+            final String categoryName = category;
+            ToggleButton btn = new ToggleButton(categoryName);
+            btn.setToggleGroup(categoryGroup);
             btn.getStyleClass().add("category-btn");
             btn.setStyle("-fx-padding: 8 16; -fx-background-radius: 6; -fx-cursor: hand;");
             
             // Select "All" by default
-            if (category.equals("All")) {
+            if (categoryName.equals("All")) {
                 btn.setSelected(true);
             }
 
             btn.setOnAction(e -> {
-                selectedCategory = category;
+                selectedCategory = categoryName;
                 populateMenuGrid();
             });
 
@@ -383,6 +501,9 @@ public class BillingController {
                 orderItem.setQuantity(orderItem.getQuantity() + 1);
                 getCurrentTabTableView().refresh();
                 updateCurrentTabBilling();
+                if (!restoringState) {
+                    persistState();
+                }
                 return;
             }
         }
@@ -391,6 +512,9 @@ public class BillingController {
         OrderItem newItem = new OrderItem(menuItem.getName(), 1, menuItem.getPrice());
         currentOrderItems.add(newItem);
         updateCurrentTabBilling();
+        if (!restoringState) {
+            persistState();
+        }
     }
 
     private ObservableList<OrderItem> getCurrentTabOrderItems() {
@@ -455,6 +579,7 @@ public class BillingController {
         subtotalLabel.setText("₹" + String.format("%.2f", subtotal));
         taxLabel.setText("₹" + String.format("%.2f", tax));
         totalLabel.setText("₹" + String.format("%.2f", total));
+        persistState();
     }
 
     private void updateBillInfo() {
@@ -512,9 +637,12 @@ public class BillingController {
         System.out.println("Payment method: " + method);
         // Visual feedback for selected payment method
         if (cashBtn != null && cardBtn != null && upiBtn != null) {
-            cashBtn.setStyle(method.equals("Cash") ? "-fx-background-color: #3b82f6; -fx-text-fill: white;" : "");
-            cardBtn.setStyle(method.equals("Card") ? "-fx-background-color: #3b82f6; -fx-text-fill: white;" : "");
-            upiBtn.setStyle(method.equals("UPI") ? "-fx-background-color: #3b82f6; -fx-text-fill: white;" : "");
+            cashBtn.setStyle(method.equals("Cash") ? PAYMENT_SELECTED_STYLE : "");
+            cardBtn.setStyle(method.equals("Card") ? PAYMENT_SELECTED_STYLE : "");
+            upiBtn.setStyle(method.equals("UPI") ? PAYMENT_SELECTED_STYLE : "");
+        }
+        if (!restoringState) {
+            persistState();
         }
     }
 
@@ -528,6 +656,7 @@ public class BillingController {
         }
         updateBillInfo();
         updateBilling();
+        persistState();
     }
 
     private void openNewBillTab() {
@@ -536,17 +665,56 @@ public class BillingController {
         billTabsList.add(newBillTab);
         billTabs.getTabs().add(newBillTab.tab);
         billTabs.getSelectionModel().select(newBillTab.tab);
+        persistState();
     }
 
     private void settleBill() {
-        ObservableList<OrderItem> currentOrderItems = getCurrentTabOrderItems();
-        
-        if (currentOrderItems.isEmpty()) {
-            showAlert("Empty Order", "Please add items to the order before settling.");
+        if (billTabs.getSelectionModel().getSelectedIndex() == 0) {
+            settleMainTab();
+        } else {
+            BillTab selected = getSelectedBillTab();
+            settleBillForTab(selected);
+        }
+    }
+
+    private void settleMainTab() {
+        String customerName = customerNameField != null ? customerNameField.getText() : "";
+        if (persistBill(orderItems, customerName, selectedPaymentMethod)) {
+            clearOrder();
+        }
+    }
+
+    private void settleBillForTab(BillTab tab) {
+        if (tab == null) {
             return;
         }
+        String customerName = tab.customerField != null ? tab.customerField.getText() : "";
+        if (persistBill(tab.orderItems, customerName, tab.paymentMethod)) {
+            billTabs.getTabs().remove(tab.tab);
+            billTabsList.remove(tab);
+            persistState();
+        }
+    }
 
-        // Calculate totals
+    private BillTab getSelectedBillTab() {
+        javafx.scene.control.Tab selectedTab = billTabs.getSelectionModel().getSelectedItem();
+        if (selectedTab == null) {
+            return null;
+        }
+        for (BillTab bt : billTabsList) {
+            if (bt.tab == selectedTab) {
+                return bt;
+            }
+        }
+        return null;
+    }
+
+    private boolean persistBill(ObservableList<OrderItem> currentOrderItems, String customerName, String paymentMethod) {
+        if (currentOrderItems == null || currentOrderItems.isEmpty()) {
+            showAlert("Empty Order", "Please add items to the order before settling.");
+            return false;
+        }
+
         double currentSubtotal = 0.0;
         for (OrderItem item : currentOrderItems) {
             currentSubtotal += item.getTotal();
@@ -557,50 +725,41 @@ public class BillingController {
         long billNumber = generateBillNumber();
         String currentDateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
 
-        // Get customer name
-        String customerName = "";
-        if (billTabs.getSelectionModel().getSelectedIndex() == 0 && customerNameField != null) {
-            customerName = customerNameField.getText();
-        }
-
-        // Persist bill in MongoDB
         Document bill = new Document("billNumber", billNumber)
                 .append("customerName", customerName)
-                .append("paymentMethod", selectedPaymentMethod)
+                .append("paymentMethod", paymentMethod)
+                .append("orderType", selectedOrderType)
                 .append("subtotal", currentSubtotal)
                 .append("tax", currentTax)
                 .append("total", currentTotal)
+                .append("status", "Completed")
                 .append("items", currentOrderItems.stream().map(i -> new Document("name", i.getName())
                         .append("qty", i.getQuantity())
                         .append("price", i.getPrice())
                         .append("total", i.getTotal())).toList())
                 .append("createdAt", currentDateTime);
-        
+
         try {
             billsCollection.insertOne(bill);
-            showAlert("Bill Settled", "Bill #" + billNumber + " settled successfully!\nPayment: " + selectedPaymentMethod + "\nTotal: ₹" + String.format("%.2f", currentTotal));
-            
-            // Clear the current tab or close it if it's not the main tab
-            if (billTabs.getSelectionModel().getSelectedIndex() == 0) {
-                clearOrder();
-            } else {
-                javafx.scene.control.Tab selectedTab = billTabs.getSelectionModel().getSelectedItem();
-                billTabs.getTabs().remove(selectedTab);
-                billTabsList.removeIf(bt -> bt.tab == selectedTab);
-            }
+            showAlert("Bill Settled", "Bill #" + billNumber + " settled successfully!\nPayment: " + paymentMethod + "\nTotal: ₹" + String.format("%.2f", currentTotal));
+            return true;
         } catch (Exception e) {
             showAlert("Error", "Failed to save bill: " + e.getMessage());
             e.printStackTrace();
+            return false;
         }
     }
 
     private void printKOT() {
-        ObservableList<OrderItem> currentOrderItems = getCurrentTabOrderItems();
-        if (currentOrderItems.isEmpty()) {
+        printKOTForItems(getCurrentTabOrderItems());
+    }
+
+    private void printKOTForItems(ObservableList<OrderItem> currentOrderItems) {
+        if (currentOrderItems == null || currentOrderItems.isEmpty()) {
             showAlert("Empty Order", "No items to print KOT.");
             return;
         }
-        
+
         System.out.println("=== KOT (Kitchen Order Ticket) ===");
         System.out.println("Time: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")));
         System.out.println("Items:");
@@ -608,7 +767,7 @@ public class BillingController {
             System.out.println("  " + item.getQuantity() + "x " + item.getName());
         }
         System.out.println("================================");
-        
+
         showAlert("KOT Printed", "Kitchen Order Ticket sent to kitchen!");
     }
 
@@ -642,6 +801,16 @@ public class BillingController {
         Label dateLabel;
         TextField customerField;
         int billNumber;
+        String paymentMethod = "Cash";
+        Button cashBtn;
+        Button cardBtn;
+        Button upiBtn;
+        Button settleBtn;
+        Button discountBtn;
+        Button couponBtn;
+        Button kotBtn;
+        Button saveBtn;
+        Button newBillBtn;
 
         BillTab(int tabNumber, BillingController controller) {
             this.billNumber = (int) generateBillNumber();
@@ -727,6 +896,7 @@ public class BillingController {
             HBox customerBox = new HBox(8, new Label("Customer:"), customerField);
             customerBox.setAlignment(Pos.CENTER_LEFT);
             HBox.setHgrow(customerField, javafx.scene.layout.Priority.ALWAYS);
+            customerField.textProperty().addListener((obs, oldVal, newVal) -> persistState());
 
             // Create labels
             subtotalLabel = new Label("₹0.00");
@@ -744,14 +914,64 @@ public class BillingController {
 
             VBox billingBox = new VBox(8, subtotalBox, totalBox);
 
+            // Action buttons
+            discountBtn = new Button("Discount");
+            couponBtn = new Button("Coupon");
+            kotBtn = new Button("KOT");
+            saveBtn = new Button("Save");
+            newBillBtn = new Button("New Bill");
+
+            discountBtn.setOnAction(e -> applyDiscount());
+            couponBtn.setOnAction(e -> applyCoupon());
+            kotBtn.setOnAction(e -> printKOTForItems(orderItems));
+            saveBtn.setOnAction(e -> showAlert("Coming Soon", "Save feature will be available soon!"));
+            newBillBtn.setOnAction(e -> openNewBillTab());
+
+            discountBtn.getStyleClass().add("secondary-button");
+            couponBtn.getStyleClass().add("secondary-button");
+            kotBtn.getStyleClass().add("secondary-button");
+            saveBtn.getStyleClass().add("secondary-button");
+            newBillBtn.getStyleClass().add("secondary-button");
+
+            Region actionSpacer = new Region();
+            HBox actionBox = new HBox(8, discountBtn, couponBtn, actionSpacer, newBillBtn, kotBtn, saveBtn);
+            actionBox.setAlignment(Pos.CENTER_RIGHT);
+            HBox.setHgrow(actionSpacer, javafx.scene.layout.Priority.ALWAYS);
+
+            // Payment buttons
+            cashBtn = new Button("Cash");
+            cardBtn = new Button("Card");
+            upiBtn = new Button("UPI");
+            settleBtn = new Button("Settle Bill");
+
+            cashBtn.getStyleClass().add("payment-button");
+            cardBtn.getStyleClass().add("payment-button");
+            upiBtn.getStyleClass().add("payment-button");
+            settleBtn.getStyleClass().add("primary-button");
+
+            cashBtn.setOnAction(e -> setPaymentMethod("Cash"));
+            cardBtn.setOnAction(e -> setPaymentMethod("Card"));
+            upiBtn.setOnAction(e -> setPaymentMethod("UPI"));
+            settleBtn.setOnAction(e -> settleBillForTab(this));
+            setPaymentMethod("Cash");
+
+            Region paymentSpacer = new Region();
+            HBox paymentBox = new HBox(8, new Label("Payment:"), cashBtn, cardBtn, upiBtn, paymentSpacer, settleBtn);
+            paymentBox.setAlignment(Pos.CENTER_RIGHT);
+            HBox.setHgrow(paymentSpacer, javafx.scene.layout.Priority.ALWAYS);
+
             // Layout
             VBox content = new VBox(8);
-            content.getChildren().addAll(header, tableView, customerBox, new Separator(), billingBox);
+            content.getChildren().addAll(header, tableView, customerBox, actionBox, new Separator(), billingBox, paymentBox);
             content.setPadding(new Insets(12));
             VBox.setVgrow(tableView, javafx.scene.layout.Priority.ALWAYS);
 
             tab = new javafx.scene.control.Tab("Bill #" + tabNumber, content);
             tab.setClosable(true);
+            tab.setOnClosed(e -> {
+                billTabsList.remove(this);
+                persistState();
+            });
         }
 
         void updateBilling() {
@@ -765,6 +985,88 @@ public class BillingController {
             subtotalLabel.setText("₹" + String.format("%.2f", sub));
             taxLabel.setText("₹" + String.format("%.2f", tax));
             totalLabel.setText("₹" + String.format("%.2f", tot));
+            persistState();
+        }
+
+        private void setPaymentMethod(String method) {
+            paymentMethod = method;
+            if (cashBtn != null && cardBtn != null && upiBtn != null) {
+                cashBtn.setStyle(method.equals("Cash") ? PAYMENT_SELECTED_STYLE : "");
+                cardBtn.setStyle(method.equals("Card") ? PAYMENT_SELECTED_STYLE : "");
+                upiBtn.setStyle(method.equals("UPI") ? PAYMENT_SELECTED_STYLE : "");
+            }
+            persistState();
+        }
+
+        void loadSnapshot(TabSnapshot snapshot) {
+            if (snapshot.items != null) {
+                orderItems.setAll(fromSnapshots(snapshot.items));
+            }
+            customerField.setText(snapshot.customerName != null ? snapshot.customerName : "");
+            setPaymentMethod(snapshot.paymentMethod != null ? snapshot.paymentMethod : "Cash");
+            billNumber = snapshot.billNumber != 0 ? snapshot.billNumber : billNumber;
+            billNumberLabel.setText("Bill #" + billNumber);
+            if (snapshot.dateLabel != null && !snapshot.dateLabel.isBlank()) {
+                dateLabel.setText(snapshot.dateLabel);
+            }
+            if (snapshot.title != null && !snapshot.title.isBlank()) {
+                tab.setText(snapshot.title);
+            }
+            updateBilling();
+        }
+    }
+
+    private static List<OrderItemSnapshot> toSnapshots(List<OrderItem> source) {
+        List<OrderItemSnapshot> snapshots = new ArrayList<>();
+        if (source == null) {
+            return snapshots;
+        }
+        for (OrderItem item : source) {
+            snapshots.add(new OrderItemSnapshot(item.getName(), item.getQuantity(), item.getPrice()));
+        }
+        return snapshots;
+    }
+
+    private static List<OrderItem> fromSnapshots(List<OrderItemSnapshot> snapshots) {
+        List<OrderItem> items = new ArrayList<>();
+        if (snapshots == null) {
+            return items;
+        }
+        for (OrderItemSnapshot snapshot : snapshots) {
+            items.add(new OrderItem(snapshot.name, snapshot.quantity, snapshot.price));
+        }
+        return items;
+    }
+
+    private static class BillingViewState {
+        private List<OrderItemSnapshot> mainOrderItems = new ArrayList<>();
+        private String customerName = "";
+        private String tableSelection;
+        private String paymentMethod = "Cash";
+        private String orderType = "Dine-In";
+        private String billLabel = "";
+        private String orderDate = "";
+        private List<TabSnapshot> extraTabs = new ArrayList<>();
+    }
+
+    private static class TabSnapshot {
+        private List<OrderItemSnapshot> items = new ArrayList<>();
+        private String customerName = "";
+        private String paymentMethod = "Cash";
+        private String title;
+        private int billNumber;
+        private String dateLabel;
+    }
+
+    private static class OrderItemSnapshot {
+        private final String name;
+        private final int quantity;
+        private final double price;
+
+        private OrderItemSnapshot(String name, int quantity, double price) {
+            this.name = name;
+            this.quantity = quantity;
+            this.price = price;
         }
     }
 

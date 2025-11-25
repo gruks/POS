@@ -5,6 +5,9 @@
 <?import javafx.scene.layout.*?>
 
 <BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.pos.controller.BillingController">
+    <fx:define>
+        <ToggleGroup fx:id="categoryGroup"/>
+    </fx:define>
     
     <left>
         <VBox spacing="8" prefWidth="360" styleClass="panel">
@@ -39,16 +42,7 @@
                     <content>
                         <HBox spacing="4" styleClass="category-container">
                             <children>
-                                <ToggleButton fx:id="allBtn" text="All" styleClass="category-button" selected="true">
-                                    <toggleGroup>
-                                        <ToggleGroup fx:id="categoryGroup"/>
-                                    </toggleGroup>
-                                </ToggleButton>
-                                <ToggleButton fx:id="beveragesBtn" text="Beverages" styleClass="category-button" toggleGroup="$categoryGroup"/>
-                                <ToggleButton fx:id="mainCourseBtn" text="Main Course" styleClass="category-button" toggleGroup="$categoryGroup"/>
-                                <ToggleButton fx:id="snacksBtn" text="Snacks" styleClass="category-button" toggleGroup="$categoryGroup"/>
-                                <ToggleButton fx:id="dessertsBtn" text="Desserts" styleClass="category-button" toggleGroup="$categoryGroup"/>
-                                <ToggleButton fx:id="startersBtn" text="Starters" styleClass="category-button" toggleGroup="$categoryGroup"/>
+                                <FlowPane fx:id="categoryFilterPane" hgap="8" vgap="8" />
                             </children>
                         </HBox>
                     </content>
@@ -57,17 +51,7 @@
                 <!-- Menu Items Grid -->
                 <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
                     <content>
-                        <TilePane fx:id="menuGrid" hgap="12" vgap="12" prefColumns="3" style="-fx-padding:8;">
-                            <!-- Item tiles go here dynamically -->
-                            <VBox styleClass="tile" spacing="6" alignment="CENTER" style="-fx-background-color:#f9fafb; -fx-border-color:#e5e7eb; -fx-border-radius:8; -fx-background-radius:8; -fx-padding:10;">
-                                <children>
-                                    <Label text="🍽️" style="-fx-font-size: 32px;"/>
-                                    <Label text="Sample Item" styleClass="item-name"/>
-                                    <Label text="₹250" styleClass="item-price"/>
-                                </children>
-                                <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
-                            </VBox>
-                        </TilePane>
+                        <TilePane fx:id="menuGrid" hgap="12" vgap="12" prefColumns="3" style="-fx-padding:8;"/>
                     </content>
                 </ScrollPane>
             </children>

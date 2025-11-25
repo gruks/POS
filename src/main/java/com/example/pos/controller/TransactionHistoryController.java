@@ -4,10 +4,21 @@ import java.io.File;
 import java.net.URL;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.Date;
 import java.util.ResourceBundle;
 
+import org.bson.Document;
+
 import com.example.pos.model.Transaction;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Sorts;
 
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -31,6 +42,11 @@ import javafx.scene.layout.HBox;
 import javafx.stage.FileChooser;
 
 public class TransactionHistoryController implements Initializable {
+
+    private static final String DB_URI = "mongodb://localhost:27017";
+    private static final String DB_NAME = "posapp";
+    private static final String BILLS_COLLECTION = "bills";
+    private static final DateTimeFormatter CREATED_AT_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
     // Header Controls
     @FXML
@@ -72,32 +88,37 @@ public class TransactionHistoryController implements Initializable {
     @FXML
     private TableColumn<Transaction, Void> colActions;
 
-    // Pagination
+    // Results info
     @FXML
     private Label lblPaginationInfo;
-    @FXML
-    private Button btnPrevious;
-    @FXML
-    private Button btnPage1;
-    @FXML
-    private Button btnPage2;
-    @FXML
-    private Button btnPage3;
-    @FXML
-    private Button btnNext;
+
+    private static MongoClient mongoClient;
+    private MongoCollection<Document> billsCollection;
 
     private ObservableList<Transaction> transactionList;
     private FilteredList<Transaction> filteredData;
-    private int currentPage = 1;
-    private final int itemsPerPage = 12;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        setupMongo();
         setupTableColumns();
-        loadSampleData();
+        loadTransactionsFromDb();
         setupFilters();
-        setupPagination();
         setupEventHandlers();
+    }
+
+    private void setupMongo() {
+        try {
+            if (mongoClient == null) {
+                mongoClient = MongoClients.create(DB_URI);
+            }
+            MongoDatabase db = mongoClient.getDatabase(DB_NAME);
+            billsCollection = db.getCollection(BILLS_COLLECTION);
+        } catch (Exception e) {
+            billsCollection = null;
+            System.err.println("Failed to connect to MongoDB: " + e.getMessage());
+            showAlert("Database Error", "Unable to connect to database. Showing sample data instead.");
+        }
     }
 
     private void setupTableColumns() {
@@ -321,7 +342,110 @@ public class TransactionHistoryController implements Initializable {
         });
     }
 
-    private void loadSampleData() {
+    private void loadTransactionsFromDb() {
+        if (billsCollection == null) {
+            loadSampleData("Database connection unavailable. Showing sample data instead.");
+            return;
+        }
+
+        transactionList = FXCollections.observableArrayList();
+        try (MongoCursor<Document> cursor = billsCollection.find()
+                .sort(Sorts.descending("createdAt")).iterator()) {
+            while (cursor.hasNext()) {
+                Transaction transaction = mapDocumentToTransaction(cursor.next());
+                if (transaction != null) {
+                    transactionList.add(transaction);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to load transactions: " + e.getMessage());
+            loadSampleData("Failed to load transactions. Showing sample data.\n" + e.getMessage());
+            return;
+        }
+
+        if (transactionList.isEmpty()) {
+            loadSampleData("No transactions found. Showing sample data.");
+            return;
+        }
+
+        filteredData = new FilteredList<>(transactionList, p -> true);
+        tableTransactions.setItems(filteredData);
+        updateResultInfo();
+    }
+
+    private Transaction mapDocumentToTransaction(Document doc) {
+        if (doc == null) {
+            return null;
+        }
+
+        String billNumber = doc.get("billNumber") != null ? doc.get("billNumber").toString() : "-";
+        LocalDateTime createdAt = parseCreatedAt(doc.get("createdAt"));
+        String customer = doc.getString("customerName");
+        if (customer == null || customer.isBlank()) {
+            customer = "Walk-in";
+        }
+        String type = doc.getString("orderType");
+        if (type == null || type.isBlank()) {
+            type = "Dine-in";
+        }
+        double total = parseDouble(doc.get("total"));
+        String paymentMode = doc.getString("paymentMethod");
+        if (paymentMode == null || paymentMode.isBlank()) {
+            paymentMode = "Cash";
+        }
+        String status = doc.getString("status");
+        if (status == null || status.isBlank()) {
+            status = "Completed";
+        }
+
+        return new Transaction(
+                billNumber.startsWith("#") ? billNumber : "#" + billNumber,
+                createdAt,
+                customer,
+                type,
+                (int) Math.round(total),
+                paymentMode,
+                status
+        );
+    }
+
+    private LocalDateTime parseCreatedAt(Object createdAt) {
+        if (createdAt instanceof String str && !str.isBlank()) {
+            try {
+                return LocalDateTime.parse(str, CREATED_AT_FORMATTER);
+            } catch (DateTimeParseException e) {
+                try {
+                    return LocalDateTime.parse(str);
+                } catch (DateTimeParseException ignored) {
+                }
+            }
+        } else if (createdAt instanceof Date date) {
+            return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+        }
+        return LocalDateTime.now();
+    }
+
+    private double parseDouble(Object value) {
+        if (value == null) {
+            return 0.0;
+        }
+        if (value instanceof Double d) {
+            return d;
+        }
+        if (value instanceof Integer i) {
+            return i.doubleValue();
+        }
+        if (value instanceof Long l) {
+            return l.doubleValue();
+        }
+        try {
+            return Double.parseDouble(value.toString());
+        } catch (NumberFormatException e) {
+            return 0.0;
+        }
+    }
+
+    private void loadSampleData(String reason) {
         transactionList = FXCollections.observableArrayList(
                 new Transaction("#12345", LocalDateTime.of(2025, 10, 9, 18, 16), "John Doe", "Dine-in", 1250, "Card", "Completed"),
                 new Transaction("#12344", LocalDateTime.of(2025, 10, 9, 15, 30), "Walk-in", "Dine-in", 3400, "Cash", "Completed"),
@@ -339,6 +463,11 @@ public class TransactionHistoryController implements Initializable {
 
         filteredData = new FilteredList<>(transactionList, p -> true);
         tableTransactions.setItems(filteredData);
+        updateResultInfo();
+
+        if (reason != null && !reason.isBlank()) {
+            showAlert("Sample Data", reason);
+        }
     }
 
     private void setupFilters() {
@@ -365,6 +494,9 @@ public class TransactionHistoryController implements Initializable {
     }
 
     private void applyFilters() {
+        if (filteredData == null) {
+            return;
+        }
         filteredData.setPredicate(transaction -> {
             // Search filter
             String search = txtSearch.getText().toLowerCase();
@@ -397,8 +529,7 @@ public class TransactionHistoryController implements Initializable {
 
             return matchesSearch && matchesDate && matchesPayment && matchesStatus;
         });
-
-        updatePaginationInfo();
+        updateResultInfo();
     }
 
     private void clearFilters() {
@@ -409,54 +540,11 @@ public class TransactionHistoryController implements Initializable {
         cmbStatus.getSelectionModel().selectFirst();
     }
 
-    private void setupPagination() {
-        btnPage1.setOnAction(e -> goToPage(1));
-        btnPage2.setOnAction(e -> goToPage(2));
-        btnPage3.setOnAction(e -> goToPage(3));
-        btnPrevious.setOnAction(e -> previousPage());
-        btnNext.setOnAction(e -> nextPage());
-
-        updatePaginationInfo();
-    }
-
-    private void goToPage(int page) {
-        currentPage = page;
-        updatePaginationButtons();
-    }
-
-    private void previousPage() {
-        if (currentPage > 1) {
-            currentPage--;
-            updatePaginationButtons();
+    private void updateResultInfo() {
+        int total = filteredData == null ? 0 : filteredData.size();
+        if (lblPaginationInfo != null) {
+            lblPaginationInfo.setText("Showing " + total + " result" + (total == 1 ? "" : "s"));
         }
-    }
-
-    private void nextPage() {
-        currentPage++;
-        updatePaginationButtons();
-    }
-
-    private void updatePaginationButtons() {
-        btnPage1.getStyleClass().removeAll("pagination-active");
-        btnPage2.getStyleClass().removeAll("pagination-active");
-        btnPage3.getStyleClass().removeAll("pagination-active");
-
-        switch (currentPage) {
-            case 1 ->
-                btnPage1.getStyleClass().add("pagination-active");
-            case 2 ->
-                btnPage2.getStyleClass().add("pagination-active");
-            case 3 ->
-                btnPage3.getStyleClass().add("pagination-active");
-        }
-
-        updatePaginationInfo();
-    }
-
-    private void updatePaginationInfo() {
-        int total = filteredData.size();
-        int showing = Math.min(itemsPerPage, total);
-        lblPaginationInfo.setText("Showing 1 to " + showing + " of " + total + " results");
     }
 
     private void setupEventHandlers() {
