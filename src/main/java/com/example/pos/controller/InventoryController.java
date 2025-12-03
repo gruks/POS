@@ -1,228 +1,264 @@
 package com.example.pos.controller;
 
 import java.io.File;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+import java.io.IOException;
+import java.text.NumberFormat;
 import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
 
-import javafx.beans.property.IntegerProperty;
-import javafx.beans.property.SimpleIntegerProperty;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.property.StringProperty;
+import com.example.pos.model.InventoryItem;
+import com.example.pos.service.InventoryService;
+
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.geometry.Insets;
+import javafx.scene.Node;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar.ButtonData;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ChoiceBox;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
 import javafx.scene.input.DragEvent;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.TransferMode;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.stage.FileChooser;
 
 public class InventoryController {
 
-	@FXML private StackPane uploadArea;
-	@FXML private Button btnUpload;
+    @FXML private StackPane uploadArea;
+    @FXML private TableView<InventoryItem> itemsTable;
+    @FXML private TableColumn<InventoryItem, String> colName;
+    @FXML private TableColumn<InventoryItem, String> colRate;
+    @FXML private TableColumn<InventoryItem, Integer> colQuantity;
+    @FXML private TableColumn<InventoryItem, String> colCategory;
+    @FXML private TableColumn<InventoryItem, Void> colActions;
 
-	@FXML private TableView<PurchaseRecord> purchaseTable;
-	@FXML private TableColumn<PurchaseRecord, String> colSupplier;
-	@FXML private TableColumn<PurchaseRecord, String> colDate;
-	@FXML private TableColumn<PurchaseRecord, String> colItems;
-	@FXML private TableColumn<PurchaseRecord, String> colAmount;
-	@FXML private TableColumn<PurchaseRecord, String> colStatus;
-	@FXML private TableColumn<PurchaseRecord, Void>   colActions;
+    private final ObservableList<InventoryItem> items = FXCollections.observableArrayList();
+    private final InventoryService inventoryService = new InventoryService();
+    private final NumberFormat currency = NumberFormat.getCurrencyInstance(new Locale("en", "IN"));
 
-	private final ObservableList<PurchaseRecord> tableData = FXCollections.observableArrayList();
+    @FXML
+    private void initialize() {
+        setupTable();
+        setupUploadHandlers();
+        refreshTable();
+    }
 
-	private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    @FXML
+    private void onAddItem() {
+        openItemDialog(null);
+    }
 
-	@FXML
-	private void initialize() {
-		setupTable();
-		loadDummyData();
-		setupUploadHandlers();
-	}
+    @FXML
+    private void onUploadCsv() {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Import Inventory CSV");
+        chooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("CSV Files", "*.csv")
+        );
+        File file = chooser.showOpenDialog(uploadArea.getScene().getWindow());
+        if (file != null) {
+            importCsv(file);
+        }
+    }
 
-	/* ---------- Table ---------- */
+    private void setupTable() {
+        itemsTable.setItems(items);
 
-	private void setupTable() {
-		colSupplier.setCellValueFactory(data -> data.getValue().supplierNameProperty());
-		colDate.setCellValueFactory(data -> data.getValue().dateProperty());
-		colItems.setCellValueFactory(data -> new SimpleStringProperty(String.valueOf(data.getValue().itemsProperty().get())));
-		colAmount.setCellValueFactory(data -> data.getValue().amountProperty());
-		colStatus.setCellValueFactory(data -> data.getValue().paymentStatusProperty());
+        colName.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getName()));
+        colRate.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(
+                currency.format(data.getValue().getRate())));
+        colQuantity.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getQuantity()));
+        colCategory.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getCategory()));
 
-		colStatus.setCellFactory(col -> new TableCell<>() {
-			@Override
-			protected void updateItem(String status, boolean empty) {
-				super.updateItem(status, empty);
-				if (empty || status == null) {
-					setText(null);
-					setGraphic(null);
-				} else {
-					Label chip = new Label(status);
-					chip.getStyleClass().add("action-button");
-					if ("Paid".equalsIgnoreCase(status)) {
-						chip.getStyleClass().add("success");
-					} else {
-						chip.getStyleClass().add("warning");
-					}
-					setGraphic(chip);
-					setText(null);
-				}
-			}
-		});
+        colActions.setCellFactory(col -> new TableCell<>() {
+            private final Button btnEdit = new Button("Edit");
+            private final Button btnDelete = new Button("Delete");
+            private final HBox box = new HBox(8, btnEdit, btnDelete);
 
-		colActions.setCellFactory(col -> new TableCell<>() {
-			private final Button btnView = styledButton("View");
-			private final Button btnEdit = styledButton("Edit");
-			private final Button btnPaid = styledButton("Mark Paid");
+            {
+                btnEdit.getStyleClass().add("secondary-button");
+                btnDelete.getStyleClass().add("secondary-button");
+                btnDelete.setStyle("-fx-text-fill: #dc2626;");
+                btnEdit.setOnAction(e -> {
+                    InventoryItem item = getTableView().getItems().get(getIndex());
+                    openItemDialog(item);
+                });
+                btnDelete.setOnAction(e -> {
+                    InventoryItem item = getTableView().getItems().get(getIndex());
+                    confirmDelete(item);
+                });
+            }
 
-			{
-				btnPaid.getStyleClass().add("success");
-				btnView.setOnAction(this::onView);
-				btnEdit.setOnAction(this::onEdit);
-				btnPaid.setOnAction(this::onPaid);
-			}
+            @Override
+            protected void updateItem(Void v, boolean empty) {
+                super.updateItem(v, empty);
+                if (empty) {
+                    setGraphic(null);
+                } else {
+                    setGraphic(box);
+                }
+            }
+        });
+    }
 
-			private Button styledButton(String text) {
-				Button b = new Button(text);
-				b.getStyleClass().add("action-button");
-				return b;
-			}
+    private void refreshTable() {
+        items.setAll(inventoryService.getAllItems());
+    }
 
-			private void onView(ActionEvent e) {
-				PurchaseRecord rec = getTableView().getItems().get(getIndex());
-				System.out.println("View clicked: " + rec.getSupplierName());
-			}
+    private void setupUploadHandlers() {
+        uploadArea.setOnMouseClicked(e -> onUploadCsv());
+        uploadArea.setOnDragOver(this::onDragOver);
+        uploadArea.setOnDragDropped(this::onDragDropped);
+        uploadArea.setOnDragExited(e -> uploadArea.setStyle(""));
+    }
 
-			private void onEdit(ActionEvent e) {
-				PurchaseRecord rec = getTableView().getItems().get(getIndex());
-				System.out.println("Edit clicked: " + rec.getSupplierName());
-			}
+    private void onDragOver(DragEvent event) {
+        Dragboard db = event.getDragboard();
+        if (db.hasFiles()) {
+            event.acceptTransferModes(TransferMode.COPY);
+            uploadArea.setStyle("-fx-border-color:#2563eb; -fx-background-color: rgba(37,99,235,0.08);");
+        }
+        event.consume();
+    }
 
-			private void onPaid(ActionEvent e) {
-				PurchaseRecord rec = getTableView().getItems().get(getIndex());
-				rec.setPaymentStatus("Paid");
-				purchaseTable.refresh();
-			}
+    private void onDragDropped(DragEvent event) {
+        Dragboard db = event.getDragboard();
+        boolean success = false;
+        if (db.hasFiles()) {
+            for (File file : db.getFiles()) {
+                importCsv(file);
+            }
+            success = true;
+        }
+        event.setDropCompleted(success);
+        uploadArea.setStyle("");
+        event.consume();
+    }
 
-			@Override
-			protected void updateItem(Void item, boolean empty) {
-				super.updateItem(item, empty);
-				if (empty) {
-					setGraphic(null);
-				} else {
-					javafx.scene.layout.HBox box = new javafx.scene.layout.HBox(8, btnView, btnEdit, btnPaid);
-					setGraphic(box);
-				}
-			}
-		});
+    private void importCsv(File file) {
+        try {
+            InventoryService.ImportResult result = inventoryService.importCsv(file);
+            refreshTable();
+            showInfo("Import complete",
+                    "Added: " + result.added() + ", Updated: " + result.updated() + ", Skipped: " + result.skipped());
+        } catch (IOException ex) {
+            showError("Failed to import CSV", ex.getMessage());
+        } catch (Exception ex) {
+            showError("Import error", ex.getMessage());
+        }
+    }
 
-		purchaseTable.setItems(tableData);
-	}
+    private void openItemDialog(InventoryItem existing) {
+        Dialog<ItemFormResult> dialog = new Dialog<>();
+        dialog.setTitle(existing == null ? "Add Retail Item" : "Edit Retail Item");
+        ButtonType saveButtonType = new ButtonType("Save", ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, saveButtonType);
 
-	private void loadDummyData() {
-		tableData.setAll(
-			new PurchaseRecord("Spice Traders",       LocalDate.of(2025,10,8),  12, "₹16,000", "Paid"),
-			new PurchaseRecord("Fresh Vegetables Co.", LocalDate.of(2025,10,7),   8, "₹8,500",  "Pending"),
-			new PurchaseRecord("Dairy Suppliers Ltd.", LocalDate.of(2025,10,6),   5, "₹12,000", "Paid"),
-			new PurchaseRecord("Meat Market",           LocalDate.of(2025,10,5),  15, "₹22,000", "Paid"),
-			new PurchaseRecord("Beverages Wholesale",   LocalDate.of(2025,10,4),  20, "₹18,500", "Pending")
-		);
-	}
+        TextField nameField = new TextField(existing != null ? existing.getName() : "");
+        TextField rateField = new TextField(existing != null ? String.valueOf(existing.getRate()) : "");
+        Spinner<Integer> qtySpinner = new Spinner<>();
+        qtySpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 100000,
+                existing != null ? existing.getQuantity() : 0));
+        ChoiceBox<String> categoryChoice = new ChoiceBox<>(FXCollections.observableArrayList(
+                InventoryService.RETAIL_CATEGORY, "Beverages", "Snacks", "Desserts"));
+        categoryChoice.setValue(existing != null ? existing.getCategory() : InventoryService.RETAIL_CATEGORY);
 
-	/* ---------- Upload ---------- */
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 10, 10, 10));
+        grid.addRow(0, new Label("Name"), nameField);
+        grid.addRow(1, new Label("Rate (₹)"), rateField);
+        grid.addRow(2, new Label("Quantity"), qtySpinner);
+        grid.addRow(3, new Label("Category"), categoryChoice);
 
-	private void setupUploadHandlers() {
-		btnUpload.setOnAction(e -> openFileChooser());
+        Node saveButton = dialog.getDialogPane().lookupButton(saveButtonType);
+        saveButton.disableProperty().bind(nameField.textProperty().isEmpty()
+                .or(rateField.textProperty().isEmpty()));
 
-		uploadArea.setOnDragOver(this::onDragOver);
-		uploadArea.setOnDragDropped(this::onDragDropped);
-		uploadArea.setOnDragExited(e -> uploadArea.setStyle(""));
-	}
+        dialog.getDialogPane().setContent(grid);
+        dialog.setResultConverter(btn -> {
+            if (btn == saveButtonType) {
+                try {
+                    double rate = Double.parseDouble(rateField.getText());
+                    if (rate < 0) {
+                        throw new NumberFormatException("Rate cannot be negative");
+                    }
+                    int qty = qtySpinner.getValue();
+                    return new ItemFormResult(nameField.getText().trim(), rate, qty, categoryChoice.getValue());
+                } catch (NumberFormatException ex) {
+                    showError("Invalid rate", "Please enter a valid number for rate.");
+                    return null;
+                }
+            }
+            return null;
+        });
 
-	private void onDragOver(DragEvent event) {
-		Dragboard db = event.getDragboard();
-		if (db.hasFiles()) {
-			event.acceptTransferModes(TransferMode.COPY);
-			uploadArea.setStyle("-fx-border-color:#2563eb; -fx-background-color: rgba(37,99,235,0.08);");
-		}
-		event.consume();
-	}
+        Optional<ItemFormResult> result = dialog.showAndWait();
+        if (result.isEmpty()) {
+            return;
+        }
 
-	private void onDragDropped(DragEvent event) {
-		Dragboard db = event.getDragboard();
-		boolean success = false;
-		if (db.hasFiles()) {
-			handleUploadedFiles(db.getFiles());
-			success = true;
-		}
-		event.setDropCompleted(success);
-		uploadArea.setStyle("");
-		event.consume();
-	}
+        ItemFormResult data = result.get();
+        try {
+            if (existing == null) {
+                inventoryService.createItem(data.name(), data.rate(), data.quantity(), data.category());
+            } else {
+                inventoryService.updateItem(existing.getId(), data.name(), data.rate(), data.quantity(), data.category());
+            }
+            refreshTable();
+        } catch (Exception ex) {
+            showError("Unable to save item", ex.getMessage());
+        }
+    }
 
-	private void openFileChooser() {
-		FileChooser chooser = new FileChooser();
-		chooser.setTitle("Select Invoices");
-		chooser.getExtensionFilters().addAll(
-			new FileChooser.ExtensionFilter("Documents", "*.pdf", "*.xls", "*.xlsx"),
-			new FileChooser.ExtensionFilter("Images", "*.png", "*.jpg", "*.jpeg")
-		);
-		List<File> files = chooser.showOpenMultipleDialog(uploadArea.getScene().getWindow());
-		if (files != null && !files.isEmpty()) {
-			handleUploadedFiles(files);
-		}
-	}
+    private void confirmDelete(InventoryItem item) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Delete Item");
+        alert.setHeaderText("Delete " + item.getName() + "?");
+        alert.setContentText("This action cannot be undone.");
+        alert.showAndWait()
+                .filter(res -> res == ButtonType.OK)
+                .ifPresent(res -> {
+                    try {
+                        inventoryService.deleteItem(item.getId());
+                        refreshTable();
+                    } catch (Exception ex) {
+                        showError("Unable to delete item", ex.getMessage());
+                    }
+                });
+    }
 
-	private void handleUploadedFiles(List<File> files) {
-		for (File f : files) {
-			System.out.println("Uploaded: " + f.getAbsolutePath());
-			// TODO: parse and add to table if needed
-		}
-	}
+    private void showInfo(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
 
-	/* ---------- Model ---------- */
+    private void showError(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
 
-	public static class PurchaseRecord {
-		private final StringProperty supplierName = new SimpleStringProperty();
-		private final StringProperty date         = new SimpleStringProperty();
-		private final IntegerProperty items       = new SimpleIntegerProperty();
-		private final StringProperty amount       = new SimpleStringProperty();
-		private final StringProperty paymentStatus= new SimpleStringProperty();
-
-		public PurchaseRecord(String supplierName, LocalDate date, int items, String amount, String paymentStatus) {
-			setSupplierName(supplierName);
-			setDate(date.format(DATE_FMT));
-			setItems(items);
-			setAmount(amount);
-			setPaymentStatus(paymentStatus);
-		}
-
-		public String getSupplierName() { return supplierName.get(); }
-		public void setSupplierName(String value) { supplierName.set(value); }
-		public StringProperty supplierNameProperty() { return supplierName; }
-
-		public String getDate() { return date.get(); }
-		public void setDate(String value) { date.set(value); }
-		public StringProperty dateProperty() { return date; }
-
-		public int getItems() { return items.get(); }
-		public void setItems(int value) { items.set(value); }
-		public IntegerProperty itemsProperty() { return items; }
-
-		public String getAmount() { return amount.get(); }
-		public void setAmount(String value) { amount.set(value); }
-		public StringProperty amountProperty() { return amount; }
-
-		public String getPaymentStatus() { return paymentStatus.get(); }
-		public void setPaymentStatus(String value) { paymentStatus.set(value); }
-		public StringProperty paymentStatusProperty() { return paymentStatus; }
-	}
+    private record ItemFormResult(String name, double rate, int quantity, String category) {
+    }
 }

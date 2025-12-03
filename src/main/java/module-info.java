@@ -2,10 +2,7 @@ module com.example.pos {
     requires javafx.controls;
     requires javafx.fxml;
     requires javafx.graphics;
-    // MongoDB Java Driver modules
-    requires org.mongodb.bson;
-    requires org.mongodb.driver.core;
-    requires org.mongodb.driver.sync.client;
+    requires java.sql;
 
     opens com.example.pos to javafx.fxml;
     opens com.example.pos.controller to javafx.fxml;

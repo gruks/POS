@@ -36,6 +36,7 @@
                 <Button fx:id="navTables" text="Tables" onAction="#onOpenTables" styleClass="nav-btn"/>
                 <Button fx:id="navKOT" text="KOT" onAction="#onOpenKOT" styleClass="nav-btn"/>
                 <Button fx:id="navReports" text="Reports" onAction="#onOpenReports" styleClass="nav-btn"/>
+                <Button fx:id="navStaffPayroll" text="Staff Payroll" onAction="#onOpenStaffPayroll" styleClass="nav-btn"/>
                 <Region VBox.vgrow="ALWAYS"/>
             </children>
             <padding><Insets top="16" left="12" right="12" bottom="16"/></padding>

@@ -4,19 +4,28 @@ import java.io.File;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
-import org.bson.Document;
-
+import com.example.pos.model.InventoryItem;
 import com.example.pos.model.MenuItem;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoCursor;
-import com.mongodb.client.MongoDatabase;
+import com.example.pos.model.TableModel;
+import com.example.pos.model.TableSession;
+import com.example.pos.model.TableSessionItem;
+import com.example.pos.service.InventoryService;
+import com.example.pos.service.MenuService;
+import com.example.pos.service.SalesService;
+import com.example.pos.service.SalesService.SaleItem;
+import com.example.pos.service.SalesService.SaleRequest;
+import com.example.pos.service.TableService;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -128,34 +137,26 @@ public class BillingController {
     private String selectedPaymentMethod = "Cash";
     private List<BillTab> billTabsList = new ArrayList<>();
     private boolean restoringState = false;
+    private boolean restoringTableSession = false;
 
-    // Mongo
-    private static MongoClient mongoClient;
-    private MongoCollection<Document> itemsCollection;
-    private MongoCollection<Document> billsCollection;
-    private MongoCollection<Document> categoriesCollection;
+    // Tables & inventory
+    private TableService tableService = new TableService();
+    private final InventoryService inventoryService = new InventoryService();
+    private final MenuService menuService = new MenuService();
+    private final SalesService salesService = new SalesService();
+    private final ExecutorService dataExecutor = Executors.newFixedThreadPool(
+            Math.max(2, Runtime.getRuntime().availableProcessors() / 2));
+    private final Map<String, InventoryItem> retailInventoryByName = new HashMap<>();
+    private TableModel activeTable;
+    private boolean tableSessionMode = false;
 
     @FXML
     public void initialize() {
         System.out.println("BillingController initialized");
         restoringState = true;
 
-        // Mongo setup
-        if (mongoClient == null) {
-            mongoClient = MongoClients.create("mongodb://localhost:27017");
-        }
-        MongoDatabase db = mongoClient.getDatabase("posapp");
-        itemsCollection = db.getCollection("menu_items");
-        billsCollection = db.getCollection("bills");
-        categoriesCollection = db.getCollection("menu_categories");
-
-        // Load categories from DB
         loadCategoriesFromDb();
-
-        // Create dynamic category filter buttons
         createCategoryFilterButtons();
-
-        // Load menu items from DB
         loadMenuItemsFromDb();
 
         // Initialize order table
@@ -171,12 +172,7 @@ public class BillingController {
         updateBillInfo();
         updateBilling();
 
-        // Populate table dropdown with sample table numbers 1..20
-        if (tableChoice != null) {
-            tableChoice.setItems(FXCollections.observableArrayList(
-                java.util.stream.IntStream.rangeClosed(1, 20).mapToObj(i -> "T" + i).toList()
-            ));
-        }
+        populateTableChoices();
 
         // Make the first tab non-closable or handle tab close events
         if (billTabs != null && !billTabs.getTabs().isEmpty()) {
@@ -213,6 +209,37 @@ public class BillingController {
         restoringState = false;
         restoreState();
         persistState();
+    }
+
+    private void loadTableSession(TableSession session) {
+        if (session == null) {
+            return;
+        }
+        restoringTableSession = true;
+        orderItems.setAll(fromTableSession(session));
+        if (customerNameField != null) {
+            customerNameField.setText(session.getCustomerName() != null ? session.getCustomerName() : "");
+        }
+        if (billNumberLabel != null && session.getBillLabel() != null) {
+            billNumberLabel.setText(session.getBillLabel());
+        }
+        if (session.getPaymentMethod() != null) {
+            selectedPaymentMethod = session.getPaymentMethod();
+            setPaymentMethod(selectedPaymentMethod);
+        }
+        if (session.getOrderType() != null) {
+            selectedOrderType = session.getOrderType();
+        }
+        if (orderTypeGroup != null && session.getOrderType() != null) {
+            orderTypeGroup.getToggles().stream()
+                    .filter(t -> t instanceof ToggleButton)
+                    .map(t -> (ToggleButton) t)
+                    .filter(btn -> btn.getText().equalsIgnoreCase(session.getOrderType()))
+                    .findFirst()
+                    .ifPresent(toggle -> toggle.setSelected(true));
+        }
+        restoringTableSession = false;
+        updateBilling();
     }
 
     private void restoreState() {
@@ -263,6 +290,27 @@ public class BillingController {
         restoringState = false;
     }
 
+    public void openForTable(TableService service, TableModel table, TableSession session) {
+        if (service != null) {
+            this.tableService = service;
+        }
+        this.activeTable = table;
+        this.tableSessionMode = table != null;
+        populateTableChoices();
+
+        if (tableChoice != null && table != null) {
+            tableChoice.setValue(table.getTableName());
+            tableChoice.setDisable(true);
+        }
+
+        if (session != null) {
+            loadTableSession(session);
+        } else if (table != null) {
+            orderItems.clear();
+            updateBilling();
+        }
+    }
+
     private void persistState() {
         if (restoringState) {
             return;
@@ -287,26 +335,57 @@ public class BillingController {
             snapshot.dateLabel = bt.dateLabel != null ? bt.dateLabel.getText() : "";
             VIEW_STATE.extraTabs.add(snapshot);
         }
+
+        persistActiveTableSession();
+    }
+
+    private void persistActiveTableSession() {
+        if (!tableSessionMode || restoringTableSession || activeTable == null || activeTable.getId() == null) {
+            return;
+        }
+
+        if (orderItems.isEmpty()) {
+            tableService.clearSession(activeTable.getId(), "Available");
+            return;
+        }
+
+        List<TableSessionItem> items = new ArrayList<>();
+        for (OrderItem item : orderItems) {
+            items.add(new TableSessionItem(item.getName(), item.getQuantity(), item.getPrice()));
+        }
+
+        TableSession session = new TableSession(
+                activeTable.getId(),
+                activeTable.getTableName(),
+                billNumberLabel != null ? billNumberLabel.getText() : "",
+                customerNameField != null ? customerNameField.getText() : "",
+                selectedPaymentMethod,
+                selectedOrderType,
+                items,
+                "Occupied",
+                LocalDateTime.now());
+        tableService.saveSession(session);
     }
 
     private void loadCategoriesFromDb() {
         categories.clear();
-        categories.add("All"); // Always add "All" first
-        
-        try (MongoCursor<Document> cur = categoriesCollection.find().iterator()) {
-            while (cur.hasNext()) {
-                Document d = cur.next();
-                String categoryName = d.getString("name");
-                if (categoryName != null && !categoryName.isBlank()) {
-                    categories.add(categoryName);
-                }
-            }
+        categories.add("All");
+        try {
+            categories.addAll(menuService.loadCategories().values());
         } catch (Exception e) {
             System.err.println("Error loading categories: " + e.getMessage());
-            // Fallback to default categories
             if (categories.size() == 1) {
                 categories.addAll(List.of("Beverages", "Main Course", "Snacks", "Desserts", "Starters"));
             }
+        }
+        ensureRetailCategoryPresence();
+    }
+
+    private void ensureRetailCategoryPresence() {
+        boolean hasRetail = categories.stream()
+                .anyMatch(cat -> cat.equalsIgnoreCase(InventoryService.RETAIL_CATEGORY));
+        if (!hasRetail) {
+            categories.add(InventoryService.RETAIL_CATEGORY);
         }
     }
 
@@ -372,6 +451,10 @@ public class BillingController {
 
                 plusBtn.setOnAction(e -> {
                     OrderItem item = getTableView().getItems().get(getIndex());
+                    if (!hasRetailStock(item.getName(), 1)) {
+                        showStockWarning(item.getName());
+                        return;
+                    }
                     item.setQuantity(item.getQuantity() + 1);
                     getTableView().refresh();
                     updateBilling();
@@ -405,20 +488,37 @@ public class BillingController {
     }
 
     private void loadMenuItemsFromDb() {
-        menuItems.clear();
-        try (MongoCursor<Document> cur = itemsCollection.find().iterator()) {
-            while (cur.hasNext()) {
-                Document d = cur.next();
-                String name = d.getString("name");
-                Double price = d.getDouble("price");
-                String category = d.getString("category_name");
-                if (category == null) category = d.getString("category");
-                String imageUrl = d.getString("imageUrl");
-                if (name != null && price != null) {
-                    menuItems.add(new MenuItem(name, price, category == null ? "" : category, imageUrl == null ? "" : imageUrl));
+        Task<MenuData> task = new Task<>() {
+            @Override
+            protected MenuData call() {
+                List<MenuItem> items = new ArrayList<>(menuService.loadMenuItemsForBilling());
+                Map<String, InventoryItem> retail = new HashMap<>();
+                List<InventoryItem> retailItems = inventoryService.getAllItems();
+                for (InventoryItem item : retailItems) {
+                    retail.put(item.getName(), item);
+                    items.add(new MenuItem(
+                            item.getName(),
+                            item.getRate(),
+                            InventoryService.RETAIL_CATEGORY,
+                            "",
+                            item.getQuantity()));
                 }
+                return new MenuData(items, retail);
             }
-        }
+        };
+        task.setOnSucceeded(e -> {
+            MenuData data = task.getValue();
+            retailInventoryByName.clear();
+            retailInventoryByName.putAll(data.retailInventory());
+            menuItems.setAll(data.items());
+            ensureRetailCategoryPresence();
+            populateMenuGrid();
+        });
+        task.setOnFailed(e -> {
+            Throwable ex = task.getException();
+            System.err.println("Unable to load menu: " + (ex != null ? ex.getMessage() : "unknown error"));
+        });
+        dataExecutor.submit(task);
     }
 
     private void populateMenuGrid() {
@@ -481,6 +581,16 @@ public class BillingController {
 
         tile.getChildren().addAll(visual, name, price);
 
+        if (item.hasLimitedInventory()) {
+            int qty = item.getAvailableQuantity() != null ? item.getAvailableQuantity() : 0;
+            Label stockLabel = new Label(qty > 0 ? "Stock: " + qty : "Out of stock");
+            stockLabel.setStyle(qty > 0 ? "-fx-text-fill: #2563eb;" : "-fx-text-fill: #dc2626;");
+            tile.getChildren().add(stockLabel);
+            if (qty <= 0) {
+                tile.setOpacity(0.6);
+            }
+        }
+
         // Click to add item to order
         tile.setOnMouseClicked(e -> addItemToOrder(item));
 
@@ -498,6 +608,10 @@ public class BillingController {
         // Check if item already exists in order
         for (OrderItem orderItem : currentOrderItems) {
             if (orderItem.getName().equals(menuItem.getName())) {
+                if (!hasRetailStock(menuItem.getName(), 1)) {
+                    showStockWarning(menuItem.getName());
+                    return;
+                }
                 orderItem.setQuantity(orderItem.getQuantity() + 1);
                 getCurrentTabTableView().refresh();
                 updateCurrentTabBilling();
@@ -509,6 +623,10 @@ public class BillingController {
         }
 
         // Add new item
+        if (!hasRetailStock(menuItem.getName(), 1)) {
+            showStockWarning(menuItem.getName());
+            return;
+        }
         OrderItem newItem = new OrderItem(menuItem.getName(), 1, menuItem.getPrice());
         currentOrderItems.add(newItem);
         updateCurrentTabBilling();
@@ -632,6 +750,18 @@ public class BillingController {
         }
     }
 
+    private void populateTableChoices() {
+        if (tableChoice == null) {
+            return;
+        }
+        try {
+            tableChoice.setItems(FXCollections.observableArrayList(tableService.loadTableNames()));
+            tableChoice.setDisable(false);
+        } catch (Exception ex) {
+            System.err.println("Unable to load table list: " + ex.getMessage());
+        }
+    }
+
     private void setPaymentMethod(String method) {
         selectedPaymentMethod = method;
         System.out.println("Payment method: " + method);
@@ -652,7 +782,9 @@ public class BillingController {
             customerNameField.clear();
         }
         if (tableChoice != null) {
-            tableChoice.setValue(null);
+            if (!tableSessionMode) {
+                tableChoice.setValue(null);
+            }
         }
         updateBillInfo();
         updateBilling();
@@ -679,9 +811,7 @@ public class BillingController {
 
     private void settleMainTab() {
         String customerName = customerNameField != null ? customerNameField.getText() : "";
-        if (persistBill(orderItems, customerName, selectedPaymentMethod)) {
-            clearOrder();
-        }
+        persistBill(orderItems, customerName, selectedPaymentMethod, this::clearOrder);
     }
 
     private void settleBillForTab(BillTab tab) {
@@ -689,11 +819,11 @@ public class BillingController {
             return;
         }
         String customerName = tab.customerField != null ? tab.customerField.getText() : "";
-        if (persistBill(tab.orderItems, customerName, tab.paymentMethod)) {
+        persistBill(tab.orderItems, customerName, tab.paymentMethod, () -> {
             billTabs.getTabs().remove(tab.tab);
             billTabsList.remove(tab);
             persistState();
-        }
+        });
     }
 
     private BillTab getSelectedBillTab() {
@@ -709,10 +839,13 @@ public class BillingController {
         return null;
     }
 
-    private boolean persistBill(ObservableList<OrderItem> currentOrderItems, String customerName, String paymentMethod) {
+    private void persistBill(ObservableList<OrderItem> currentOrderItems,
+                             String customerName,
+                             String paymentMethod,
+                             Runnable onSuccess) {
         if (currentOrderItems == null || currentOrderItems.isEmpty()) {
             showAlert("Empty Order", "Please add items to the order before settling.");
-            return false;
+            return;
         }
 
         double currentSubtotal = 0.0;
@@ -723,31 +856,54 @@ public class BillingController {
         double currentTotal = currentSubtotal + currentTax;
 
         long billNumber = generateBillNumber();
-        String currentDateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
+        Long tableId = parseActiveTableId();
+        String tableName = activeTable != null ? activeTable.getTableName() : null;
 
-        Document bill = new Document("billNumber", billNumber)
-                .append("customerName", customerName)
-                .append("paymentMethod", paymentMethod)
-                .append("orderType", selectedOrderType)
-                .append("subtotal", currentSubtotal)
-                .append("tax", currentTax)
-                .append("total", currentTotal)
-                .append("status", "Completed")
-                .append("items", currentOrderItems.stream().map(i -> new Document("name", i.getName())
-                        .append("qty", i.getQuantity())
-                        .append("price", i.getPrice())
-                        .append("total", i.getTotal())).toList())
-                .append("createdAt", currentDateTime);
+        List<SaleItem> saleItems = currentOrderItems.stream()
+                .map(i -> new SaleItem(i.getName(), i.getQuantity(), i.getPrice(), i.getTotal()))
+                .collect(Collectors.toList());
 
-        try {
-            billsCollection.insertOne(bill);
+        SaleRequest request = new SaleRequest(
+                billNumber,
+                customerName,
+                paymentMethod,
+                selectedOrderType,
+                currentSubtotal,
+                currentTax,
+                currentTotal,
+                "Completed",
+                saleItems,
+                buildRetailAdjustments(currentOrderItems),
+                tableId,
+                tableName
+        );
+
+        String activeTableIdSnapshot = activeTable != null ? activeTable.getId() : null;
+        Task<Long> task = new Task<>() {
+            @Override
+            protected Long call() {
+                long saleId = salesService.recordSale(request);
+                if (tableSessionMode && activeTableIdSnapshot != null) {
+                    tableService.clearSession(activeTableIdSnapshot, "Available");
+                }
+                return saleId;
+            }
+        };
+        task.setOnSucceeded(e -> {
             showAlert("Bill Settled", "Bill #" + billNumber + " settled successfully!\nPayment: " + paymentMethod + "\nTotal: ₹" + String.format("%.2f", currentTotal));
-            return true;
-        } catch (Exception e) {
-            showAlert("Error", "Failed to save bill: " + e.getMessage());
-            e.printStackTrace();
-            return false;
-        }
+            refreshMenuItemsWithInventory();
+            if (onSuccess != null) {
+                onSuccess.run();
+            }
+        });
+        task.setOnFailed(e -> {
+            Throwable ex = task.getException();
+            showAlert("Error", "Failed to save bill: " + (ex != null ? ex.getMessage() : "Unknown error"));
+            if (ex != null) {
+                ex.printStackTrace();
+            }
+        });
+        dataExecutor.submit(task);
     }
 
     private void printKOT() {
@@ -779,6 +935,68 @@ public class BillingController {
     private void applyCoupon() {
         System.out.println("Apply coupon dialog");
         showAlert("Coming Soon", "Coupon feature will be available soon!");
+    }
+
+    private boolean hasRetailStock(String itemName, int delta) {
+        if (delta <= 0 || !retailInventoryByName.containsKey(itemName)) {
+            return true;
+        }
+        InventoryItem stock = retailInventoryByName.get(itemName);
+        int available = stock.getQuantity();
+        int currentPending = getPendingRetailQuantity(itemName);
+        return available >= currentPending + delta;
+    }
+
+    private int getPendingRetailQuantity(String itemName) {
+        int qty = 0;
+        for (OrderItem item : orderItems) {
+            if (item.getName().equals(itemName)) {
+                qty += item.getQuantity();
+            }
+        }
+        for (BillTab tab : billTabsList) {
+            for (OrderItem item : tab.orderItems) {
+                if (item.getName().equals(itemName)) {
+                    qty += item.getQuantity();
+                }
+            }
+        }
+        return qty;
+    }
+
+    private void showStockWarning(String itemName) {
+        showAlert("Stock unavailable", itemName + " is out of stock for the Retail inventory.");
+    }
+
+    private Map<String, Integer> buildRetailAdjustments(List<OrderItem> soldItems) {
+        Map<String, Integer> sold = new HashMap<>();
+        for (OrderItem item : soldItems) {
+            if (retailInventoryByName.containsKey(item.getName())) {
+                sold.merge(item.getName(), item.getQuantity(), Integer::sum);
+            }
+        }
+        return sold;
+    }
+
+    private Long parseActiveTableId() {
+        if (activeTable == null || activeTable.getId() == null) {
+            return null;
+        }
+        try {
+            return Long.parseLong(activeTable.getId());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private void refreshMenuItemsWithInventory() {
+        String previousCategory = selectedCategory;
+        loadMenuItemsFromDb();
+        selectedCategory = previousCategory != null ? previousCategory : "All";
+        populateMenuGrid();
+    }
+
+    private record MenuData(List<MenuItem> items, Map<String, InventoryItem> retailInventory) {
     }
 
     private void showAlert(String title, String message) {
@@ -852,6 +1070,10 @@ public class BillingController {
                     });
                     plusBtn.setOnAction(e -> {
                         OrderItem it = getTableView().getItems().get(getIndex());
+                        if (!hasRetailStock(it.getName(), 1)) {
+                            showStockWarning(it.getName());
+                            return;
+                        }
                         it.setQuantity(it.getQuantity() + 1);
                         getTableView().refresh();
                         updateBilling();
@@ -1034,6 +1256,17 @@ public class BillingController {
         }
         for (OrderItemSnapshot snapshot : snapshots) {
             items.add(new OrderItem(snapshot.name, snapshot.quantity, snapshot.price));
+        }
+        return items;
+    }
+
+    private static List<OrderItem> fromTableSession(TableSession session) {
+        List<OrderItem> items = new ArrayList<>();
+        if (session == null || session.getItems() == null) {
+            return items;
+        }
+        for (TableSessionItem item : session.getItems()) {
+            items.add(new OrderItem(item.name(), item.quantity(), item.price()));
         }
         return items;
     }

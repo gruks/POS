@@ -32,10 +32,10 @@
       <version>${javafx.version}</version>
     </dependency>
     <dependency>
-    <groupId>org.mongodb</groupId>
-    <artifactId>mongodb-driver-sync</artifactId>
-    <version>5.2.0</version> <!-- check latest -->
-</dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>42.7.3</version>
+    </dependency>
 
   </dependencies>
 

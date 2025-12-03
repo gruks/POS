@@ -8,16 +8,8 @@ import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.bson.Document;
-import org.bson.types.ObjectId;
-
 import com.example.pos.model.MenuProduct;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoCursor;
-import com.mongodb.client.MongoDatabase;
-import static com.mongodb.client.model.Filters.eq;
+import com.example.pos.service.MenuService;
 
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.SimpleDoubleProperty;
@@ -64,11 +56,9 @@ public class MenuController {
 
     // Local state
     private final ObservableList<MenuProduct> data = FXCollections.observableArrayList();
-    private MongoCollection<Document> itemCollection;
-    private MongoCollection<Document> categoryCollection;
-    private static MongoClient mongoClient;
+    private final MenuService menuService = new MenuService();
 
-    private final Map<ObjectId, String> categoryMap = new HashMap<>(); // category_id -> name
+    private final Map<Long, String> categoryMap = new HashMap<>(); // category_id -> name
     private final ObservableList<String> categoryNames = FXCollections.observableArrayList("All");
 
     // ----------------------- Constructors -----------------------
@@ -80,26 +70,11 @@ public class MenuController {
         // no-op: JavaFX will call initialize() after construction
     }
 
-    /**
-     * Optional constructor to inject a MongoClient (useful for tests or shared client).
-     * @param client existing MongoClient instance to use
-     */
-    public MenuController(MongoClient client) {
-        mongoClient = client;
-    }
-
     // ----------------------- Lifecycle -----------------------
 
     @FXML
     private void initialize() {
-        if (mongoClient == null) {
-            mongoClient = MongoClients.create("mongodb://localhost:27017");
-        }
-        MongoDatabase db = mongoClient.getDatabase("posapp");
-        itemCollection = db.getCollection("menu_items");
-        categoryCollection = db.getCollection("menu_categories");
-
-        ensureDefaultCategories();
+        menuService.ensureDefaultCategoriesExist();
         reloadCategories();
 
         setupTable();
@@ -154,17 +129,7 @@ public class MenuController {
     // ----------------------- Data Loading & Filtering -----------------------
 
     private void reloadFromDb() {
-        data.clear();
-        try (MongoCursor<Document> cur = itemCollection.find().iterator()) {
-            while (cur.hasNext()) {
-                Document d = cur.next();
-                ObjectId id = d.getObjectId("_id");
-                ObjectId catId = d.getObjectId("category_id");
-                String catName = categoryMap.getOrDefault(catId, d.getString("category_name") != null ? d.getString("category_name") : "Unknown");
-                MenuProduct p = new MenuProduct(id, d.getString("name"), d.getDouble("price"), catName, catId, d.getInteger("quantity", 0), d.getString("description"), d.getString("imageUrl"));
-                data.add(p);
-            }
-        }
+        data.setAll(menuService.loadProducts());
         applyFilters();
     }
 
@@ -180,28 +145,13 @@ public class MenuController {
 
     // ----------------------- Category Management -----------------------
 
-    private void ensureDefaultCategories() {
-        if (categoryCollection.countDocuments() == 0) {
-            for (String c : new String[]{"Beverages", "Main Course", "Snacks", "Desserts", "Starters"}) {
-                categoryCollection.insertOne(new Document("name", c));
-            }
-        }
-    }
-
     private void reloadCategories() {
         categoryMap.clear();
         categoryNames.clear();
         categoryNames.add("All");
 
-        try (MongoCursor<Document> cur = categoryCollection.find().iterator()) {
-            while (cur.hasNext()) {
-                Document d = cur.next();
-                ObjectId id = d.getObjectId("_id");
-                String name = d.getString("name");
-                categoryMap.put(id, name);
-                categoryNames.add(name);
-            }
-        }
+        categoryMap.putAll(menuService.loadCategories());
+        categoryNames.addAll(categoryMap.values());
 
         if (!categoryNames.contains(categoryFilter.getValue())) {
             categoryFilter.setValue("All");
@@ -227,19 +177,8 @@ public class MenuController {
             String n = newCat.getText() == null ? "" : newCat.getText().trim();
             if (n.isEmpty()) return;
     
-            if (categoryCollection.find(eq("name", n)).first() != null) {
-                new Alert(Alert.AlertType.WARNING, "Category already exists!").showAndWait();
-                return;
-            }
-    
-            categoryCollection.insertOne(new Document("name", n));
-    
-            // Instant UI refresh
-            reloadCategories();
-            list.setItems(FXCollections.observableArrayList(categoryNames).filtered(c -> !"All".equals(c)));
-            categoryFilter.setItems(categoryNames);
-            categoryFilter.setValue("All");
-    
+            menuService.ensureCategory(n);
+            refreshCategoryUI(list);
             newCat.clear();
         });
     
@@ -254,28 +193,12 @@ public class MenuController {
                 newName = newName.trim();
                 if (newName.isEmpty()) return;
     
-                if (categoryCollection.find(eq("name", newName)).first() != null) {
-                    new Alert(Alert.AlertType.WARNING, "Category name already exists!").showAndWait();
+                long catId = getCategoryIdByName(sel);
+                if (catId == -1) {
                     return;
                 }
-    
-                Document oldDoc = categoryCollection.find(eq("name", sel)).first();
-                if (oldDoc == null) return;
-    
-                ObjectId catId = oldDoc.getObjectId("_id");
-                categoryCollection.updateOne(eq("_id", catId),
-                        new Document("$set", new Document("name", newName)));
-    
-                // update menu items’ cached category name
-                itemCollection.updateMany(eq("category_id", catId),
-                        new Document("$set", new Document("category_name", newName)));
-    
-                // Instant UI refresh
-                reloadCategories();
-                list.setItems(FXCollections.observableArrayList(categoryNames).filtered(c -> !"All".equals(c)));
-                categoryFilter.setItems(categoryNames);
-                categoryFilter.setValue("All");
-    
+                menuService.renameCategory(catId, newName);
+                refreshCategoryUI(list);
                 reloadFromDb();
             });
         });
@@ -284,24 +207,19 @@ public class MenuController {
         del.setOnAction(e -> {
             String sel = list.getSelectionModel().getSelectedItem();
             if (sel == null) return;
-            Document doc = categoryCollection.find(eq("name", sel)).first();
-            if (doc == null) return;
+            long catId = getCategoryIdByName(sel);
+            if (catId == -1) return;
     
-            ObjectId catId = doc.getObjectId("_id");
-            long used = itemCollection.countDocuments(eq("category_id", catId));
+            long used = menuService.countProductsInCategory(catId);
             if (used > 0) {
                 new Alert(Alert.AlertType.WARNING,
                         "Cannot delete. " + used + " item(s) use this category.").showAndWait();
                 return;
             }
     
-            categoryCollection.deleteOne(eq("_id", catId));
+            menuService.deleteCategory(catId);
     
-            // Instant UI refresh
-            reloadCategories();
-            list.setItems(FXCollections.observableArrayList(categoryNames).filtered(c -> !"All".equals(c)));
-            categoryFilter.setItems(categoryNames);
-            categoryFilter.setValue("All");
+            refreshCategoryUI(list);
         });
     
         GridPane g = new GridPane();
@@ -314,6 +232,13 @@ public class MenuController {
         dlg.getDialogPane().setContent(g);
         dlg.show();
     }    
+
+    private void refreshCategoryUI(ListView<String> list) {
+        reloadCategories();
+        list.setItems(FXCollections.observableArrayList(categoryNames).filtered(c -> !"All".equals(c)));
+        categoryFilter.setItems(categoryNames);
+        categoryFilter.setValue("All");
+    }
 
     // ----------------------- Item CRUD -----------------------
 
@@ -382,7 +307,8 @@ public class MenuController {
                     int qv = qty.getValue();
                     if (n.isEmpty() || c == null) return null;
                     String img = imageField.getText() == null ? null : imageField.getText().trim();
-                    return new MenuProduct(null, n, p, c, getCategoryIdByName(c), qv, null, img);
+                    long catId = getCategoryIdByName(c);
+                    return new MenuProduct(initial == null ? 0 : initial.getId(), n, p, c, catId, qv, null, img);
                 } catch (NumberFormatException ex) {
                     new Alert(Alert.AlertType.ERROR, "Invalid price").showAndWait();
                     return null;
@@ -396,37 +322,19 @@ public class MenuController {
 
     private void insertItem(MenuProduct p) {
         if (p == null) return;
-
-        ObjectId catId = p.getCategoryId() != null ? p.getCategoryId() : getCategoryIdByName(p.getCategory());
-        Document d = new Document("name", p.getName())
-                .append("price", p.getPrice())
-                .append("category_id", catId)
-                .append("category_name", p.getCategory())
-                .append("quantity", p.getQuantity())
-                .append("description", p.getDescription())
-                .append("imageUrl", p.getImageUrl());
-
-        itemCollection.insertOne(d);
-        p.setId(d.getObjectId("_id"));
-        data.add(p);
-        applyFilters();
+        MenuProduct created = menuService.createProduct(p);
+        if (created != null) {
+            data.add(created);
+            applyFilters();
+        }
     }
 
-    private void updateItem(ObjectId id, MenuProduct updated) {
-        if (id == null || updated == null) return;
-        ObjectId catId = updated.getCategoryId() != null ? updated.getCategoryId() : getCategoryIdByName(updated.getCategory());
-        itemCollection.updateOne(eq("_id", id), new Document("$set",
-                new Document("name", updated.getName())
-                        .append("price", updated.getPrice())
-                        .append("category_id", catId)
-                        .append("category_name", updated.getCategory())
-                        .append("quantity", updated.getQuantity())
-                        .append("description", updated.getDescription())
-                        .append("imageUrl", updated.getImageUrl())));
-
+    private void updateItem(long id, MenuProduct updated) {
+        if (updated == null) return;
+        updated.setId(id);
+        menuService.updateProduct(updated);
         for (int i = 0; i < data.size(); i++) {
-            if (id.equals(data.get(i).getId())) {
-                updated.setId(id);
+            if (data.get(i).getId() == id) {
                 data.set(i, updated);
                 break;
             }
@@ -439,7 +347,7 @@ public class MenuController {
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, "Delete '" + p.getName() + "'?", ButtonType.CANCEL, ButtonType.OK);
         confirm.showAndWait().ifPresent(btn -> {
             if (btn == ButtonType.OK) {
-                itemCollection.deleteOne(eq("_id", p.getId()));
+                menuService.deleteProduct(p.getId());
                 data.remove(p);
                 applyFilters();
             }
@@ -448,14 +356,16 @@ public class MenuController {
 
     // ----------------------- Utilities -----------------------
 
-    private ObjectId getCategoryIdByName(String name) {
-        if (name == null) return null;
-        for (Map.Entry<ObjectId, String> e : categoryMap.entrySet()) {
-            if (e.getValue().equals(name)) return e.getKey();
+    private long getCategoryIdByName(String name) {
+        if (name == null) return -1;
+        for (Map.Entry<Long, String> e : categoryMap.entrySet()) {
+            if (e.getValue().equals(name)) {
+                return e.getKey();
+            }
         }
-        Document doc = categoryCollection.find(eq("name", name)).first();
-        if (doc != null) return doc.getObjectId("_id");
-        return null;
+        long id = menuService.ensureCategory(name);
+        reloadCategories();
+        return id;
     }
 
     private String storeImageToLocalFolder(File source) throws IOException {

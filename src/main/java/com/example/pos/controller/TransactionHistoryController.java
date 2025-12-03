@@ -4,21 +4,14 @@ import java.io.File;
 import java.net.URL;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.util.Date;
+import java.util.List;
 import java.util.ResourceBundle;
-
-import org.bson.Document;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import com.example.pos.model.Transaction;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoCursor;
-import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.model.Sorts;
+import com.example.pos.service.SalesService;
 
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -27,6 +20,7 @@ import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
+import javafx.concurrent.Task;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
@@ -42,11 +36,6 @@ import javafx.scene.layout.HBox;
 import javafx.stage.FileChooser;
 
 public class TransactionHistoryController implements Initializable {
-
-    private static final String DB_URI = "mongodb://localhost:27017";
-    private static final String DB_NAME = "posapp";
-    private static final String BILLS_COLLECTION = "bills";
-    private static final DateTimeFormatter CREATED_AT_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
     // Header Controls
     @FXML
@@ -92,33 +81,18 @@ public class TransactionHistoryController implements Initializable {
     @FXML
     private Label lblPaginationInfo;
 
-    private static MongoClient mongoClient;
-    private MongoCollection<Document> billsCollection;
+    private final SalesService salesService = new SalesService();
+    private final ExecutorService dataExecutor = Executors.newSingleThreadExecutor();
 
     private ObservableList<Transaction> transactionList;
     private FilteredList<Transaction> filteredData;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        setupMongo();
         setupTableColumns();
         loadTransactionsFromDb();
         setupFilters();
         setupEventHandlers();
-    }
-
-    private void setupMongo() {
-        try {
-            if (mongoClient == null) {
-                mongoClient = MongoClients.create(DB_URI);
-            }
-            MongoDatabase db = mongoClient.getDatabase(DB_NAME);
-            billsCollection = db.getCollection(BILLS_COLLECTION);
-        } catch (Exception e) {
-            billsCollection = null;
-            System.err.println("Failed to connect to MongoDB: " + e.getMessage());
-            showAlert("Database Error", "Unable to connect to database. Showing sample data instead.");
-        }
     }
 
     private void setupTableColumns() {
@@ -343,106 +317,32 @@ public class TransactionHistoryController implements Initializable {
     }
 
     private void loadTransactionsFromDb() {
-        if (billsCollection == null) {
-            loadSampleData("Database connection unavailable. Showing sample data instead.");
-            return;
-        }
-
-        transactionList = FXCollections.observableArrayList();
-        try (MongoCursor<Document> cursor = billsCollection.find()
-                .sort(Sorts.descending("createdAt")).iterator()) {
-            while (cursor.hasNext()) {
-                Transaction transaction = mapDocumentToTransaction(cursor.next());
-                if (transaction != null) {
-                    transactionList.add(transaction);
-                }
+        Task<List<Transaction>> task = new Task<>() {
+            @Override
+            protected List<Transaction> call() {
+                return salesService.loadTransactions();
             }
-        } catch (Exception e) {
-            System.err.println("Failed to load transactions: " + e.getMessage());
-            loadSampleData("Failed to load transactions. Showing sample data.\n" + e.getMessage());
-            return;
-        }
-
-        if (transactionList.isEmpty()) {
-            loadSampleData("No transactions found. Showing sample data.");
-            return;
-        }
-
-        filteredData = new FilteredList<>(transactionList, p -> true);
-        tableTransactions.setItems(filteredData);
-        updateResultInfo();
-    }
-
-    private Transaction mapDocumentToTransaction(Document doc) {
-        if (doc == null) {
-            return null;
-        }
-
-        String billNumber = doc.get("billNumber") != null ? doc.get("billNumber").toString() : "-";
-        LocalDateTime createdAt = parseCreatedAt(doc.get("createdAt"));
-        String customer = doc.getString("customerName");
-        if (customer == null || customer.isBlank()) {
-            customer = "Walk-in";
-        }
-        String type = doc.getString("orderType");
-        if (type == null || type.isBlank()) {
-            type = "Dine-in";
-        }
-        double total = parseDouble(doc.get("total"));
-        String paymentMode = doc.getString("paymentMethod");
-        if (paymentMode == null || paymentMode.isBlank()) {
-            paymentMode = "Cash";
-        }
-        String status = doc.getString("status");
-        if (status == null || status.isBlank()) {
-            status = "Completed";
-        }
-
-        return new Transaction(
-                billNumber.startsWith("#") ? billNumber : "#" + billNumber,
-                createdAt,
-                customer,
-                type,
-                (int) Math.round(total),
-                paymentMode,
-                status
-        );
-    }
-
-    private LocalDateTime parseCreatedAt(Object createdAt) {
-        if (createdAt instanceof String str && !str.isBlank()) {
-            try {
-                return LocalDateTime.parse(str, CREATED_AT_FORMATTER);
-            } catch (DateTimeParseException e) {
-                try {
-                    return LocalDateTime.parse(str);
-                } catch (DateTimeParseException ignored) {
-                }
+        };
+        task.setOnSucceeded(e -> {
+            List<Transaction> result = task.getValue();
+            if (result == null || result.isEmpty()) {
+                loadSampleData("No transactions found. Showing sample data.");
+                return;
             }
-        } else if (createdAt instanceof Date date) {
-            return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
-        }
-        return LocalDateTime.now();
-    }
-
-    private double parseDouble(Object value) {
-        if (value == null) {
-            return 0.0;
-        }
-        if (value instanceof Double d) {
-            return d;
-        }
-        if (value instanceof Integer i) {
-            return i.doubleValue();
-        }
-        if (value instanceof Long l) {
-            return l.doubleValue();
-        }
-        try {
-            return Double.parseDouble(value.toString());
-        } catch (NumberFormatException e) {
-            return 0.0;
-        }
+            transactionList = FXCollections.observableArrayList(result);
+            filteredData = new FilteredList<>(transactionList, p -> true);
+            tableTransactions.setItems(filteredData);
+            updateResultInfo();
+        });
+        task.setOnFailed(e -> {
+            Throwable ex = task.getException();
+            String reason = "Failed to load transactions. Showing sample data.";
+            if (ex != null && ex.getMessage() != null) {
+                reason += "\n" + ex.getMessage();
+            }
+            loadSampleData(reason);
+        });
+        dataExecutor.submit(task);
     }
 
     private void loadSampleData(String reason) {
