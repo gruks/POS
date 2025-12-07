@@ -169,10 +169,20 @@ public class InventoryController {
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, saveButtonType);
 
         TextField nameField = new TextField(existing != null ? existing.getName() : "");
+        nameField.setPromptText("Item name");
+        
+        TextField barcodeField = new TextField();
+        barcodeField.setPromptText("Scan or enter barcode");
+        Label barcodeHint = new Label("Tip: Use barcode scanner to auto-fill");
+        barcodeHint.setStyle("-fx-font-size: 10px; -fx-text-fill: #6b7280;");
+        
         TextField rateField = new TextField(existing != null ? String.valueOf(existing.getRate()) : "");
+        rateField.setPromptText("Price");
+        
         Spinner<Integer> qtySpinner = new Spinner<>();
         qtySpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 100000,
                 existing != null ? existing.getQuantity() : 0));
+        
         ChoiceBox<String> categoryChoice = new ChoiceBox<>(FXCollections.observableArrayList(
                 InventoryService.RETAIL_CATEGORY, "Beverages", "Snacks", "Desserts"));
         categoryChoice.setValue(existing != null ? existing.getCategory() : InventoryService.RETAIL_CATEGORY);
@@ -182,9 +192,14 @@ public class InventoryController {
         grid.setVgap(10);
         grid.setPadding(new Insets(20, 10, 10, 10));
         grid.addRow(0, new Label("Name"), nameField);
-        grid.addRow(1, new Label("Rate (₹)"), rateField);
-        grid.addRow(2, new Label("Quantity"), qtySpinner);
-        grid.addRow(3, new Label("Category"), categoryChoice);
+        grid.addRow(1, new Label("Barcode"), barcodeField);
+        grid.add(barcodeHint, 1, 2);
+        grid.addRow(3, new Label("Rate (₹)"), rateField);
+        grid.addRow(4, new Label("Quantity"), qtySpinner);
+        grid.addRow(5, new Label("Category"), categoryChoice);
+
+        // Auto-focus barcode field for quick scanning
+        javafx.application.Platform.runLater(() -> barcodeField.requestFocus());
 
         Node saveButton = dialog.getDialogPane().lookupButton(saveButtonType);
         saveButton.disableProperty().bind(nameField.textProperty().isEmpty()
@@ -199,7 +214,8 @@ public class InventoryController {
                         throw new NumberFormatException("Rate cannot be negative");
                     }
                     int qty = qtySpinner.getValue();
-                    return new ItemFormResult(nameField.getText().trim(), rate, qty, categoryChoice.getValue());
+                    String barcode = barcodeField.getText().trim();
+                    return new ItemFormResult(nameField.getText().trim(), rate, qty, categoryChoice.getValue(), barcode);
                 } catch (NumberFormatException ex) {
                     showError("Invalid rate", "Please enter a valid number for rate.");
                     return null;
@@ -217,10 +233,14 @@ public class InventoryController {
         try {
             if (existing == null) {
                 inventoryService.createItem(data.name(), data.rate(), data.quantity(), data.category());
+                System.out.println("Item created with barcode: " + data.barcode());
             } else {
                 inventoryService.updateItem(existing.getId(), data.name(), data.rate(), data.quantity(), data.category());
+                System.out.println("Item updated with barcode: " + data.barcode());
             }
             refreshTable();
+            showInfo("Success", "Item saved successfully!" + 
+                (data.barcode() != null && !data.barcode().isEmpty() ? "\nBarcode: " + data.barcode() : ""));
         } catch (Exception ex) {
             showError("Unable to save item", ex.getMessage());
         }
@@ -259,6 +279,6 @@ public class InventoryController {
         alert.showAndWait();
     }
 
-    private record ItemFormResult(String name, double rate, int quantity, String category) {
+    private record ItemFormResult(String name, double rate, int quantity, String category, String barcode) {
     }
 }

@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -22,6 +23,7 @@ import com.example.pos.service.SalesService;
 import com.example.pos.service.SalesService.SaleItem;
 import com.example.pos.service.SalesService.SaleRequest;
 import com.example.pos.service.TableService;
+import com.example.pos.util.ThermalPrinter;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -31,8 +33,12 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar.ButtonData;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.RadioButton;
 import javafx.scene.control.Separator;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TableCell;
@@ -43,7 +49,9 @@ import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.Node;
 import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.TilePane;
@@ -144,6 +152,7 @@ public class BillingController {
     private final InventoryService inventoryService = new InventoryService();
     private final MenuService menuService = new MenuService();
     private final SalesService salesService = new SalesService();
+    private final com.example.pos.service.KOTService kotService = new com.example.pos.service.KOTService();
     private final ExecutorService dataExecutor = Executors.newFixedThreadPool(
             Math.max(2, Runtime.getRuntime().availableProcessors() / 2));
     private final Map<String, InventoryItem> retailInventoryByName = new HashMap<>();
@@ -180,9 +189,13 @@ public class BillingController {
         }
 
         if (orderTypeGroup != null) {
+            // Setup toggle button styling
+            setupOrderTypeToggleStyles();
+            
             orderTypeGroup.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
                 if (newToggle instanceof ToggleButton toggleButton) {
                     selectedOrderType = toggleButton.getText();
+                    updateOrderTypeToggleStyles();
                     if (!restoringState) {
                         persistState();
                     }
@@ -403,12 +416,33 @@ public class BillingController {
             ToggleButton btn = new ToggleButton(categoryName);
             btn.setToggleGroup(categoryGroup);
             btn.getStyleClass().add("category-btn");
-            btn.setStyle("-fx-padding: 8 16; -fx-background-radius: 6; -fx-cursor: hand;");
+            
+            // Base style for unselected state
+            String baseStyle = "-fx-padding: 8 16; -fx-background-radius: 6; -fx-cursor: hand; " +
+                             "-fx-background-color: transparent; -fx-text-fill: white; " +
+                             "-fx-border-color: transparent; -fx-font-weight: 600;";
+            
+            // Selected style
+            String selectedStyle = "-fx-padding: 8 16; -fx-background-radius: 6; -fx-cursor: hand; " +
+                                 "-fx-background-color: white; -fx-text-fill: #111827; " +
+                                 "-fx-border-color: transparent; -fx-font-weight: 600;";
+            
+            btn.setStyle(baseStyle);
             
             // Select "All" by default
             if (categoryName.equals("All")) {
                 btn.setSelected(true);
+                btn.setStyle(selectedStyle);
             }
+
+            // Update style on selection change
+            btn.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
+                if (isSelected) {
+                    btn.setStyle(selectedStyle);
+                } else {
+                    btn.setStyle(baseStyle);
+                }
+            });
 
             btn.setOnAction(e -> {
                 selectedCategory = categoryName;
@@ -543,60 +577,111 @@ public class BillingController {
     }
 
     private VBox createMenuTile(MenuItem item) {
-        VBox tile = new VBox(4);
+        VBox tile = new VBox(6);
         tile.getStyleClass().add("tile");
         tile.setAlignment(Pos.CENTER);
-        tile.setPadding(new Insets(8));
-        tile.setStyle("-fx-cursor: hand; -fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; " +
-                      "-fx-border-radius: 8; -fx-background-radius: 8;");
+        tile.setPadding(new Insets(12));
+        tile.setFocusTraversable(false);
         
-        // Image thumbnail (fallback to text if missing)
+        // Base style with white background and subtle shadow
+        tile.setStyle("-fx-cursor: hand; " +
+                      "-fx-background-color: white; " +
+                      "-fx-border-color: #e5e7eb; " +
+                      "-fx-border-width: 1; " +
+                      "-fx-border-radius: 8; " +
+                      "-fx-background-radius: 8; " +
+                      "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 4, 0.3, 0, 1);");
+        
+        // Image thumbnail or icon placeholder
         javafx.scene.Node visual;
         String imgPath = item.getImageUrl();
         if (imgPath != null && !imgPath.isBlank()) {
             File f = new File(imgPath);
             if (!f.exists()) {
-                Label fallback = new Label(item.getName().substring(0, Math.min(2, item.getName().length())).toUpperCase());
-                fallback.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
-                visual = fallback;
+                // Icon placeholder with colored background
+                VBox iconBox = new VBox();
+                iconBox.setAlignment(Pos.CENTER);
+                iconBox.setPrefSize(56, 56);
+                iconBox.setStyle("-fx-background-color: #eff6ff; " +
+                               "-fx-background-radius: 8; " +
+                               "-fx-border-color: #bfdbfe; " +
+                               "-fx-border-width: 1; " +
+                               "-fx-border-radius: 8;");
+                Label iconLabel = new Label(item.getName().substring(0, Math.min(2, item.getName().length())).toUpperCase());
+                iconLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #2563eb;");
+                iconBox.getChildren().add(iconLabel);
+                visual = iconBox;
             } else {
-                ImageView iv = new ImageView(new Image(f.toURI().toString(), 64, 64, true, true));
-                iv.setFitWidth(64);
-                iv.setFitHeight(64);
+                ImageView iv = new ImageView(new Image(f.toURI().toString(), 56, 56, true, true));
+                iv.setFitWidth(56);
+                iv.setFitHeight(56);
+                iv.setStyle("-fx-background-radius: 8;");
                 visual = iv;
             }
         } else {
-            Label fallback = new Label(item.getName().substring(0, Math.min(2, item.getName().length())).toUpperCase());
-            fallback.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
-            visual = fallback;
+            // Icon placeholder with colored background
+            VBox iconBox = new VBox();
+            iconBox.setAlignment(Pos.CENTER);
+            iconBox.setPrefSize(56, 56);
+            iconBox.setStyle("-fx-background-color: #eff6ff; " +
+                           "-fx-background-radius: 8; " +
+                           "-fx-border-color: #bfdbfe; " +
+                           "-fx-border-width: 1; " +
+                           "-fx-border-radius: 8;");
+            Label iconLabel = new Label(item.getName().substring(0, Math.min(2, item.getName().length())).toUpperCase());
+            iconLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #2563eb;");
+            iconBox.getChildren().add(iconLabel);
+            visual = iconBox;
         }
 
         Label name = new Label(item.getName());
-        name.getStyleClass().add("item-name");
-        name.setStyle("-fx-font-weight: 600;");
+        name.setWrapText(true);
+        name.setMaxWidth(90);
+        name.setAlignment(Pos.CENTER);
+        name.setStyle("-fx-font-weight: 600; -fx-font-size: 12px; -fx-text-fill: #111827; -fx-text-alignment: center;");
 
         Label price = new Label("₹" + String.format("%.0f", item.getPrice()));
-        price.getStyleClass().add("item-price");
-        price.setStyle("-fx-text-fill: #059669;");
+        price.setStyle("-fx-text-fill: #10b981; -fx-font-weight: 700; -fx-font-size: 14px;");
 
         tile.getChildren().addAll(visual, name, price);
 
         if (item.hasLimitedInventory()) {
             int qty = item.getAvailableQuantity() != null ? item.getAvailableQuantity() : 0;
             Label stockLabel = new Label(qty > 0 ? "Stock: " + qty : "Out of stock");
-            stockLabel.setStyle(qty > 0 ? "-fx-text-fill: #2563eb;" : "-fx-text-fill: #dc2626;");
+            stockLabel.setStyle("-fx-font-size: 10px; " +
+                              "-fx-padding: 2 6; " +
+                              "-fx-background-radius: 4; " +
+                              (qty > 0 
+                                  ? "-fx-background-color: #dbeafe; -fx-text-fill: #1e40af;" 
+                                  : "-fx-background-color: #fee2e2; -fx-text-fill: #991b1b;"));
             tile.getChildren().add(stockLabel);
             if (qty <= 0) {
-                tile.setOpacity(0.6);
+                tile.setOpacity(0.5);
             }
         }
 
         // Click to add item to order
         tile.setOnMouseClicked(e -> addItemToOrder(item));
 
-        // Hover effect
-        tile.setOnMouseEntered(e -> tile.setStyle(tile.getStyle() + "-fx-background-color: #f3f4f6;"));
-        tile.setOnMouseExited(e -> tile.setStyle(tile.getStyle() + "-fx-background-color: #f9fafb;"));
+        // Hover effect - subtle border and shadow change
+        final String baseStyle = "-fx-cursor: hand; " +
+                                "-fx-background-color: white; " +
+                                "-fx-border-color: #e5e7eb; " +
+                                "-fx-border-width: 1; " +
+                                "-fx-border-radius: 8; " +
+                                "-fx-background-radius: 8; " +
+                                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 4, 0.3, 0, 1);";
+        
+        final String hoverStyle = "-fx-cursor: hand; " +
+                                 "-fx-background-color: white; " +
+                                 "-fx-border-color: #2563eb; " +
+                                 "-fx-border-width: 2; " +
+                                 "-fx-border-radius: 8; " +
+                                 "-fx-background-radius: 8; " +
+                                 "-fx-effect: dropshadow(gaussian, rgba(37,99,235,0.15), 8, 0.4, 0, 2);";
+        
+        tile.setOnMouseEntered(e -> tile.setStyle(hoverStyle));
+        tile.setOnMouseExited(e -> tile.setStyle(baseStyle));
 
         return tile;
     }
@@ -692,11 +777,21 @@ public class BillingController {
         }
 
         double tax = subtotal * taxRate;
-        double total = subtotal + tax;
+        double totalBeforeDiscount = subtotal + tax;
+        double total = totalBeforeDiscount - discountAmount;
 
         subtotalLabel.setText("₹" + String.format("%.2f", subtotal));
         taxLabel.setText("₹" + String.format("%.2f", tax));
-        totalLabel.setText("₹" + String.format("%.2f", total));
+        
+        if (discountAmount > 0) {
+            totalLabel.setText("₹" + String.format("%.2f", total) + 
+                " (Discount: ₹" + String.format("%.2f", discountAmount) + ")");
+            totalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: #059669;");
+        } else {
+            totalLabel.setText("₹" + String.format("%.2f", total));
+            totalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 16px;");
+        }
+        
         persistState();
     }
 
@@ -713,6 +808,56 @@ public class BillingController {
         LocalDateTime now = LocalDateTime.now();
         // Format: yyMMddHHmmss (removes first 2 digits of year)
         return Long.parseLong(now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")).substring(2));
+    }
+
+    private void setupOrderTypeToggleStyles() {
+        if (orderTypeGroup == null) return;
+        
+        for (javafx.scene.control.Toggle toggle : orderTypeGroup.getToggles()) {
+            if (toggle instanceof ToggleButton btn) {
+                // Base style for unselected state
+                String baseStyle = "-fx-background-color: transparent; " +
+                                 "-fx-text-fill: #6b7280; " +
+                                 "-fx-border-radius: 6; " +
+                                 "-fx-background-radius: 6; " +
+                                 "-fx-padding: 6 12; " +
+                                 "-fx-font-weight: 600; " +
+                                 "-fx-cursor: hand; " +
+                                 "-fx-border-color: transparent;";
+                btn.setStyle(baseStyle);
+            }
+        }
+        updateOrderTypeToggleStyles();
+    }
+
+    private void updateOrderTypeToggleStyles() {
+        if (orderTypeGroup == null) return;
+        
+        for (javafx.scene.control.Toggle toggle : orderTypeGroup.getToggles()) {
+            if (toggle instanceof ToggleButton btn) {
+                if (btn.isSelected()) {
+                    // Selected state - blue background with white text
+                    btn.setStyle("-fx-background-color: #2563eb; " +
+                               "-fx-text-fill: white; " +
+                               "-fx-border-radius: 6; " +
+                               "-fx-background-radius: 6; " +
+                               "-fx-padding: 6 12; " +
+                               "-fx-font-weight: 600; " +
+                               "-fx-cursor: hand; " +
+                               "-fx-border-color: transparent;");
+                } else {
+                    // Unselected state - transparent with gray text
+                    btn.setStyle("-fx-background-color: transparent; " +
+                               "-fx-text-fill: #6b7280; " +
+                               "-fx-border-radius: 6; " +
+                               "-fx-background-radius: 6; " +
+                               "-fx-padding: 6 12; " +
+                               "-fx-font-weight: 600; " +
+                               "-fx-cursor: hand; " +
+                               "-fx-border-color: transparent;");
+                }
+            }
+        }
     }
 
     private void setupEventHandlers() {
@@ -755,10 +900,21 @@ public class BillingController {
             return;
         }
         try {
-            tableChoice.setItems(FXCollections.observableArrayList(tableService.loadTableNames()));
-            tableChoice.setDisable(false);
+            List<String> tableNames = tableService.loadTableNames();
+            if (tableNames.isEmpty()) {
+                System.err.println("WARNING: No tables found in database. Please add tables in the Tables view.");
+                tableChoice.setItems(FXCollections.observableArrayList("No tables available"));
+                tableChoice.setDisable(true);
+            } else {
+                tableChoice.setItems(FXCollections.observableArrayList(tableNames));
+                tableChoice.setDisable(false);
+                System.out.println("Loaded " + tableNames.size() + " tables successfully");
+            }
         } catch (Exception ex) {
             System.err.println("Unable to load table list: " + ex.getMessage());
+            ex.printStackTrace();
+            tableChoice.setItems(FXCollections.observableArrayList("Error loading tables"));
+            tableChoice.setDisable(true);
         }
     }
 
@@ -778,6 +934,8 @@ public class BillingController {
 
     private void clearOrder() {
         orderItems.clear();
+        discountAmount = 0.0;
+        discountPercentage = 0.0;
         if (customerNameField != null) {
             customerNameField.clear();
         }
@@ -798,6 +956,225 @@ public class BillingController {
         billTabs.getTabs().add(newBillTab.tab);
         billTabs.getSelectionModel().select(newBillTab.tab);
         persistState();
+    }
+
+    /**
+     * Print bill on thermal printer and settle the bill
+     */
+    private void printAndSettleBill() {
+        if (orderItems == null || orderItems.isEmpty()) {
+            showAlert("Empty Order", "Please add items to the order before printing.");
+            return;
+        }
+
+        // Calculate totals
+        double currentSubtotal = 0.0;
+        for (OrderItem item : orderItems) {
+            currentSubtotal += item.getTotal();
+        }
+        double currentTax = currentSubtotal * taxRate;
+        double currentTotal = currentSubtotal + currentTax - discountAmount;
+
+        // Generate bill number
+        long billNum = generateBillNumber();
+        String billNumber = String.valueOf(billNum);
+        String date = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+        String customerName = customerNameField != null ? customerNameField.getText() : "";
+        String tableName = tableChoice != null && tableChoice.getValue() != null ? tableChoice.getValue() : "";
+
+        // Create bill data for thermal printer
+        ThermalPrinter.BillData billData = new ThermalPrinter.BillData();
+        billData.setBillNumber(billNumber);
+        billData.setDate(date);
+        billData.setCustomerName(customerName);
+        billData.setPaymentMode(selectedPaymentMethod);
+        billData.setTableName(tableName);
+        billData.setOrderType(selectedOrderType);
+        
+        // Add items
+        List<ThermalPrinter.BillItem> billItems = new ArrayList<>();
+        for (OrderItem item : orderItems) {
+            billItems.add(new ThermalPrinter.BillItem(
+                item.getName(),
+                item.getQuantity(),
+                item.getPrice(),
+                item.getTotal()
+            ));
+        }
+        billData.setItems(billItems);
+        
+        // Set totals
+        billData.setSubtotal(currentSubtotal);
+        billData.setDiscount(discountAmount);
+        billData.setTaxRate(taxRate * 100); // Convert to percentage
+        billData.setCgst(currentTax / 2); // Split tax into CGST and SGST
+        billData.setSgst(currentTax / 2);
+        billData.setTotal(currentTotal);
+        billData.setCashTendered(0); // Can be enhanced later with cash tendered dialog
+
+        // Print on thermal printer
+        ThermalPrinter printer = new ThermalPrinter();
+        boolean printSuccess = printer.printBill(billData);
+
+        if (printSuccess) {
+            // After successful print, settle the bill
+            settleBillAfterPrint(billNum, customerName, currentSubtotal, currentTax, currentTotal);
+        } else {
+            // Show error but ask if user wants to settle anyway
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle("Print Failed");
+            alert.setHeaderText("Failed to print bill");
+            alert.setContentText("The bill could not be printed. Do you want to settle the bill anyway?");
+            
+            ButtonType settleButton = new ButtonType("Settle Anyway");
+            ButtonType cancelButton = new ButtonType("Cancel", ButtonData.CANCEL_CLOSE);
+            alert.getButtonTypes().setAll(settleButton, cancelButton);
+            
+            Optional<ButtonType> result = alert.showAndWait();
+            if (result.isPresent() && result.get() == settleButton) {
+                settleBillAfterPrint(billNum, customerName, currentSubtotal, currentTax, currentTotal);
+            }
+        }
+    }
+
+    /**
+     * Settle bill after printing
+     */
+    private void settleBillAfterPrint(long billNumber, String customerName, 
+                                      double currentSubtotal, double currentTax, double currentTotal) {
+        Long tableId = parseActiveTableId();
+        String tableName = activeTable != null ? activeTable.getTableName() : null;
+
+        List<SaleItem> saleItems = orderItems.stream()
+                .map(i -> new SaleItem(i.getName(), i.getQuantity(), i.getPrice(), i.getTotal()))
+                .collect(Collectors.toList());
+
+        SaleRequest request = new SaleRequest(
+                billNumber,
+                customerName,
+                selectedPaymentMethod,
+                selectedOrderType,
+                currentSubtotal,
+                currentTax,
+                currentTotal,
+                "Completed",
+                saleItems,
+                buildRetailAdjustments(orderItems),
+                tableId,
+                tableName
+        );
+
+        String activeTableIdSnapshot = activeTable != null ? activeTable.getId() : null;
+        Task<Long> task = new Task<>() {
+            @Override
+            protected Long call() {
+                long saleId = salesService.recordSale(request);
+                if (tableSessionMode && activeTableIdSnapshot != null) {
+                    tableService.clearSession(activeTableIdSnapshot, "Available");
+                }
+                return saleId;
+            }
+        };
+        
+        task.setOnSucceeded(e -> {
+            showAlert("Bill Settled", 
+                "Bill #" + billNumber + " printed and settled successfully!\n" +
+                "Payment: " + selectedPaymentMethod + "\n" +
+                "Total: ₹" + String.format("%.2f", currentTotal));
+            
+            // Clear the order after successful settlement
+            clearOrder();
+            refreshMenuItemsWithInventory();
+        });
+        
+        task.setOnFailed(e -> {
+            Throwable ex = task.getException();
+            showAlert("Error", "Failed to save bill: " + (ex != null ? ex.getMessage() : "Unknown error"));
+            if (ex != null) {
+                ex.printStackTrace();
+            }
+        });
+        
+        dataExecutor.submit(task);
+    }
+
+    /**
+     * Print and settle bill for a specific tab
+     */
+    private void printAndSettleBillForTab(BillTab tab) {
+        if (tab == null || tab.orderItems == null || tab.orderItems.isEmpty()) {
+            showAlert("Empty Order", "Please add items to the order before printing.");
+            return;
+        }
+
+        // Calculate totals
+        double currentSubtotal = 0.0;
+        for (OrderItem item : tab.orderItems) {
+            currentSubtotal += item.getTotal();
+        }
+        double currentTax = currentSubtotal * taxRate;
+        double currentTotal = currentSubtotal + currentTax;
+
+        // Use tab's bill number
+        String billNumber = String.valueOf(tab.billNumber);
+        String date = tab.dateLabel != null ? tab.dateLabel.getText() : 
+                      LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+        String customerName = tab.customerField != null ? tab.customerField.getText() : "";
+        String tableName = tableChoice != null && tableChoice.getValue() != null ? tableChoice.getValue() : "";
+
+        // Create bill data for thermal printer
+        ThermalPrinter.BillData billData = new ThermalPrinter.BillData();
+        billData.setBillNumber(billNumber);
+        billData.setDate(date);
+        billData.setCustomerName(customerName);
+        billData.setPaymentMode(tab.paymentMethod);
+        billData.setTableName(tableName);
+        billData.setOrderType(selectedOrderType);
+        
+        // Add items
+        List<ThermalPrinter.BillItem> billItems = new ArrayList<>();
+        for (OrderItem item : tab.orderItems) {
+            billItems.add(new ThermalPrinter.BillItem(
+                item.getName(),
+                item.getQuantity(),
+                item.getPrice(),
+                item.getTotal()
+            ));
+        }
+        billData.setItems(billItems);
+        
+        // Set totals
+        billData.setSubtotal(currentSubtotal);
+        billData.setDiscount(0); // Tabs don't have discount yet
+        billData.setTaxRate(taxRate * 100);
+        billData.setCgst(currentTax / 2);
+        billData.setSgst(currentTax / 2);
+        billData.setTotal(currentTotal);
+        billData.setCashTendered(0);
+
+        // Print on thermal printer
+        ThermalPrinter printer = new ThermalPrinter();
+        boolean printSuccess = printer.printBill(billData);
+
+        if (printSuccess) {
+            // After successful print, settle the bill for this tab
+            settleBillForTab(tab);
+        } else {
+            // Show error but ask if user wants to settle anyway
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle("Print Failed");
+            alert.setHeaderText("Failed to print bill");
+            alert.setContentText("The bill could not be printed. Do you want to settle the bill anyway?");
+            
+            ButtonType settleButton = new ButtonType("Settle Anyway");
+            ButtonType cancelButton = new ButtonType("Cancel", ButtonData.CANCEL_CLOSE);
+            alert.getButtonTypes().setAll(settleButton, cancelButton);
+            
+            Optional<ButtonType> result = alert.showAndWait();
+            if (result.isPresent() && result.get() == settleButton) {
+                settleBillForTab(tab);
+            }
+        }
     }
 
     private void settleBill() {
@@ -916,20 +1293,170 @@ public class BillingController {
             return;
         }
 
-        System.out.println("=== KOT (Kitchen Order Ticket) ===");
-        System.out.println("Time: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")));
-        System.out.println("Items:");
+        // Create KOT object
+        long kotNumber = kotService.generateKOTNumber();
+        String tableName = tableChoice != null && tableChoice.getValue() != null ? 
+            tableChoice.getValue() : "Counter";
+        String customerName = customerNameField != null ? customerNameField.getText() : "";
+        
+        com.example.pos.model.KOT kot = new com.example.pos.model.KOT(
+            kotNumber, tableName, selectedOrderType, customerName);
+        
+        // Add items to KOT
         for (OrderItem item : currentOrderItems) {
-            System.out.println("  " + item.getQuantity() + "x " + item.getName());
+            com.example.pos.model.KOTItem kotItem = new com.example.pos.model.KOTItem(
+                item.getName(), item.getQuantity());
+            kot.addItem(kotItem);
         }
-        System.out.println("================================");
-
-        showAlert("KOT Printed", "Kitchen Order Ticket sent to kitchen!");
+        
+        // Set priority based on order type or table
+        if (selectedOrderType.equals("Delivery")) {
+            kot.setPriority("High");
+        }
+        
+        // Save KOT to database
+        Task<Long> task = new Task<>() {
+            @Override
+            protected Long call() throws Exception {
+                return kotService.createKOT(kot);
+            }
+        };
+        
+        task.setOnSucceeded(e -> {
+            showAlert("KOT Created", 
+                "KOT #" + kotNumber + " sent to kitchen!\n" +
+                "Table: " + tableName + "\n" +
+                "Items: " + currentOrderItems.size());
+        });
+        
+        task.setOnFailed(e -> {
+            Throwable ex = task.getException();
+            showAlert("Error", "Failed to create KOT: " + 
+                (ex != null ? ex.getMessage() : "Unknown error"));
+            if (ex != null) {
+                ex.printStackTrace();
+            }
+        });
+        
+        dataExecutor.submit(task);
     }
 
+    private double discountAmount = 0.0;
+    private double discountPercentage = 0.0;
+    
     private void applyDiscount() {
-        System.out.println("Apply discount dialog");
-        showAlert("Coming Soon", "Discount feature will be available soon!");
+        Dialog<DiscountResult> dialog = new Dialog<>();
+        dialog.setTitle("Apply Discount");
+        dialog.setHeaderText("Choose discount type and amount");
+
+        ButtonType applyButtonType = new ButtonType("Apply", ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(applyButtonType, ButtonType.CANCEL);
+
+        // Discount type selection
+        ToggleGroup discountTypeGroup = new ToggleGroup();
+        javafx.scene.control.RadioButton percentageRadio = new javafx.scene.control.RadioButton("Percentage (%)");
+        javafx.scene.control.RadioButton fixedRadio = new javafx.scene.control.RadioButton("Fixed Amount (₹)");
+        percentageRadio.setToggleGroup(discountTypeGroup);
+        fixedRadio.setToggleGroup(discountTypeGroup);
+        percentageRadio.setSelected(true);
+
+        TextField discountField = new TextField();
+        discountField.setPromptText("Enter discount value");
+
+        Label currentTotalLabel = new Label("Current Total: ₹" + String.format("%.2f", subtotal + (subtotal * taxRate)));
+        currentTotalLabel.setStyle("-fx-font-weight: bold;");
+
+        Label newTotalLabel = new Label("New Total: ₹" + String.format("%.2f", subtotal + (subtotal * taxRate)));
+        newTotalLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #059669;");
+
+        // Update new total as user types
+        discountField.textProperty().addListener((obs, oldVal, newVal) -> {
+            try {
+                double value = newVal.isEmpty() ? 0 : Double.parseDouble(newVal);
+                double currentTotal = subtotal + (subtotal * taxRate);
+                double discount = 0;
+
+                if (percentageRadio.isSelected()) {
+                    if (value > 100) value = 100;
+                    if (value < 0) value = 0;
+                    discount = currentTotal * (value / 100);
+                } else {
+                    if (value > currentTotal) value = currentTotal;
+                    if (value < 0) value = 0;
+                    discount = value;
+                }
+
+                double newTotal = currentTotal - discount;
+                newTotalLabel.setText("New Total: ₹" + String.format("%.2f", newTotal) + 
+                    " (Discount: ₹" + String.format("%.2f", discount) + ")");
+            } catch (NumberFormatException e) {
+                newTotalLabel.setText("New Total: Invalid input");
+            }
+        });
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 10, 10, 10));
+        
+        grid.add(new Label("Discount Type:"), 0, 0);
+        grid.add(percentageRadio, 1, 0);
+        grid.add(fixedRadio, 1, 1);
+        grid.add(new Label("Discount Value:"), 0, 2);
+        grid.add(discountField, 1, 2);
+        grid.add(new Separator(), 0, 3, 2, 1);
+        grid.add(currentTotalLabel, 0, 4, 2, 1);
+        grid.add(newTotalLabel, 0, 5, 2, 1);
+
+        Node applyButton = dialog.getDialogPane().lookupButton(applyButtonType);
+        applyButton.disableProperty().bind(discountField.textProperty().isEmpty());
+
+        dialog.getDialogPane().setContent(grid);
+        dialog.setResultConverter(btn -> {
+            if (btn == applyButtonType) {
+                try {
+                    double value = Double.parseDouble(discountField.getText());
+                    boolean isPercentage = percentageRadio.isSelected();
+                    
+                    if (isPercentage) {
+                        if (value < 0 || value > 100) {
+                            showAlert("Invalid Discount", "Percentage must be between 0 and 100");
+                            return null;
+                        }
+                    } else {
+                        double currentTotal = subtotal + (subtotal * taxRate);
+                        if (value < 0 || value > currentTotal) {
+                            showAlert("Invalid Discount", "Fixed amount must be between 0 and current total");
+                            return null;
+                        }
+                    }
+                    
+                    return new DiscountResult(value, isPercentage);
+                } catch (NumberFormatException ex) {
+                    showAlert("Invalid Input", "Please enter a valid number");
+                    return null;
+                }
+            }
+            return null;
+        });
+
+        Optional<DiscountResult> result = dialog.showAndWait();
+        result.ifPresent(discount -> {
+            if (discount.isPercentage()) {
+                discountPercentage = discount.value();
+                double currentTotal = subtotal + (subtotal * taxRate);
+                discountAmount = currentTotal * (discount.value() / 100);
+            } else {
+                discountAmount = discount.value();
+                discountPercentage = 0;
+            }
+            updateBilling();
+            showAlert("Discount Applied", 
+                String.format("Discount of ₹%.2f applied successfully!", discountAmount));
+        });
+    }
+
+    private record DiscountResult(double value, boolean isPercentage) {
     }
 
     private void applyCoupon() {
@@ -1102,74 +1629,126 @@ public class BillingController {
 
             tableView.getColumns().addAll(itemCol, qtyCol, priceCol, totalCol, actionsCol);
 
-            // Create header
+            // Create header with modern styling
+            Label headerTitle = new Label("Current Order");
+            headerTitle.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #111827;");
+            
             billNumberLabel = new Label("Bill #" + billNumber);
-            billNumberLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+            billNumberLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #2563eb;");
+            
             dateLabel = new Label(LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
-            dateLabel.setStyle("-fx-text-fill: #6b7280;");
-
-            HBox header = new HBox(8, new Label("Current Order"), new Region(), billNumberLabel, dateLabel);
+            dateLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #6b7280;");
+            
+            VBox headerRight = new VBox(2, billNumberLabel, dateLabel);
+            headerRight.setAlignment(Pos.CENTER_RIGHT);
+            
+            Region headerSpacer = new Region();
+            HBox.setHgrow(headerSpacer, javafx.scene.layout.Priority.ALWAYS);
+            
+            HBox header = new HBox(12, headerTitle, headerSpacer, headerRight);
             header.setAlignment(Pos.CENTER_LEFT);
-            HBox.setHgrow(header.getChildren().get(1), javafx.scene.layout.Priority.ALWAYS);
+            header.setStyle("-fx-background-color: white; -fx-padding: 12; -fx-border-radius: 8; -fx-background-radius: 8; " +
+                          "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0.2, 0, 2);");
 
-            // Customer field
+            // Customer field with modern styling
+            Label customerLabel = new Label("Customer:");
+            customerLabel.setStyle("-fx-font-weight: 600; -fx-text-fill: #374151;");
+            
             customerField = new TextField();
             customerField.setPromptText("Customer name (optional)");
-            HBox customerBox = new HBox(8, new Label("Customer:"), customerField);
-            customerBox.setAlignment(Pos.CENTER_LEFT);
+            customerField.setStyle("-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 6; " +
+                                  "-fx-background-radius: 6; -fx-padding: 8 12;");
             HBox.setHgrow(customerField, javafx.scene.layout.Priority.ALWAYS);
             customerField.textProperty().addListener((obs, oldVal, newVal) -> persistState());
+            
+            HBox customerBox = new HBox(8, customerLabel, customerField);
+            customerBox.setAlignment(Pos.CENTER_LEFT);
+            customerBox.setStyle("-fx-background-color: white; -fx-padding: 12; -fx-border-radius: 8; -fx-background-radius: 8; " +
+                               "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0.2, 0, 2);");
 
-            // Create labels
+            // Create labels with modern styling
             subtotalLabel = new Label("₹0.00");
+            subtotalLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: #111827;");
+            
             taxLabel = new Label("₹0.00");
+            taxLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: #111827;");
+            
             totalLabel = new Label("₹0.00");
-            totalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 16px;");
+            totalLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #2563eb;");
 
-            // Billing section
-            HBox subtotalBox = new HBox(8, new Label("Subtotal:"), subtotalLabel, new Region(), new Label("Tax (5%):"), taxLabel);
+            // Billing section with modern styling
+            Label subtotalLabelText = new Label("Subtotal:");
+            subtotalLabelText.setStyle("-fx-font-size: 14px; -fx-text-fill: #6b7280;");
+            
+            Label taxLabelText = new Label("Tax (5%):");
+            taxLabelText.setStyle("-fx-font-size: 14px; -fx-text-fill: #6b7280;");
+            
+            Region subtotalSpacer = new Region();
+            subtotalSpacer.setPrefWidth(40);
+            
+            HBox subtotalBox = new HBox(12, subtotalLabelText, subtotalLabel, subtotalSpacer, taxLabelText, taxLabel);
             subtotalBox.setAlignment(Pos.CENTER_RIGHT);
-            HBox.setHgrow(subtotalBox.getChildren().get(2), javafx.scene.layout.Priority.ALWAYS);
 
-            HBox totalBox = new HBox(8, new Label("Total:"), totalLabel);
+            Label totalLabelText = new Label("Total:");
+            totalLabelText.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #111827;");
+            
+            HBox totalBox = new HBox(12, totalLabelText, totalLabel);
             totalBox.setAlignment(Pos.CENTER_RIGHT);
 
-            VBox billingBox = new VBox(8, subtotalBox, totalBox);
+            Separator separator = new Separator();
 
-            // Action buttons
-            discountBtn = new Button("Discount");
-            couponBtn = new Button("Coupon");
-            kotBtn = new Button("KOT");
-            saveBtn = new Button("Save");
-            newBillBtn = new Button("New Bill");
+            // Action buttons with modern styling
+            discountBtn = new Button("💰 Discount");
+            discountBtn.setStyle("-fx-background-color: #f3f4f6; -fx-text-fill: #374151; -fx-padding: 8 16; " +
+                               "-fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: 600;");
+            
+            couponBtn = new Button("🎫 Coupon");
+            couponBtn.setStyle("-fx-background-color: #f3f4f6; -fx-text-fill: #374151; -fx-padding: 8 16; " +
+                             "-fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: 600;");
+            
+            newBillBtn = new Button("+ New Bill");
+            newBillBtn.setStyle("-fx-background-color: #6b7280; -fx-text-fill: white; -fx-padding: 8 16; " +
+                              "-fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: 600;");
+            
+            kotBtn = new Button("📋 KOT");
+            kotBtn.setStyle("-fx-background-color: #f59e0b; -fx-text-fill: white; -fx-padding: 8 16; " +
+                          "-fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: 600;");
+            
+            saveBtn = new Button("🖨 Print");
+            saveBtn.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-padding: 8 16; " +
+                           "-fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: 600;");
 
             discountBtn.setOnAction(e -> applyDiscount());
             couponBtn.setOnAction(e -> applyCoupon());
             kotBtn.setOnAction(e -> printKOTForItems(orderItems));
-            saveBtn.setOnAction(e -> showAlert("Coming Soon", "Save feature will be available soon!"));
+            saveBtn.setOnAction(e -> printAndSettleBill());
             newBillBtn.setOnAction(e -> openNewBillTab());
 
-            discountBtn.getStyleClass().add("secondary-button");
-            couponBtn.getStyleClass().add("secondary-button");
-            kotBtn.getStyleClass().add("secondary-button");
-            saveBtn.getStyleClass().add("secondary-button");
-            newBillBtn.getStyleClass().add("secondary-button");
-
             Region actionSpacer = new Region();
+            HBox.setHgrow(actionSpacer, javafx.scene.layout.Priority.ALWAYS);
+            
             HBox actionBox = new HBox(8, discountBtn, couponBtn, actionSpacer, newBillBtn, kotBtn, saveBtn);
             actionBox.setAlignment(Pos.CENTER_RIGHT);
-            HBox.setHgrow(actionSpacer, javafx.scene.layout.Priority.ALWAYS);
 
-            // Payment buttons
-            cashBtn = new Button("Cash");
-            cardBtn = new Button("Card");
-            upiBtn = new Button("UPI");
-            settleBtn = new Button("Settle Bill");
-
-            cashBtn.getStyleClass().add("payment-button");
-            cardBtn.getStyleClass().add("payment-button");
-            upiBtn.getStyleClass().add("payment-button");
-            settleBtn.getStyleClass().add("primary-button");
+            // Payment buttons with modern styling
+            Label paymentLabel = new Label("Payment Method:");
+            paymentLabel.setStyle("-fx-font-weight: 600; -fx-text-fill: #374151;");
+            
+            cashBtn = new Button("💵 Cash");
+            cashBtn.setStyle("-fx-background-color: #f3f4f6; -fx-text-fill: #374151; -fx-padding: 8 16; " +
+                           "-fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: 600;");
+            
+            cardBtn = new Button("💳 Card");
+            cardBtn.setStyle("-fx-background-color: #f3f4f6; -fx-text-fill: #374151; -fx-padding: 8 16; " +
+                           "-fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: 600;");
+            
+            upiBtn = new Button("📱 UPI");
+            upiBtn.setStyle("-fx-background-color: #f3f4f6; -fx-text-fill: #374151; -fx-padding: 8 16; " +
+                          "-fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: 600;");
+            
+            settleBtn = new Button("✓ Settle Bill");
+            settleBtn.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-padding: 12 24; " +
+                             "-fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: bold; -fx-font-size: 14px;");
 
             cashBtn.setOnAction(e -> setPaymentMethod("Cash"));
             cardBtn.setOnAction(e -> setPaymentMethod("Card"));
@@ -1178,14 +1757,25 @@ public class BillingController {
             setPaymentMethod("Cash");
 
             Region paymentSpacer = new Region();
-            HBox paymentBox = new HBox(8, new Label("Payment:"), cashBtn, cardBtn, upiBtn, paymentSpacer, settleBtn);
-            paymentBox.setAlignment(Pos.CENTER_RIGHT);
             HBox.setHgrow(paymentSpacer, javafx.scene.layout.Priority.ALWAYS);
+            
+            HBox paymentBox = new HBox(8, paymentLabel, cashBtn, cardBtn, upiBtn, paymentSpacer, settleBtn);
+            paymentBox.setAlignment(Pos.CENTER_RIGHT);
 
-            // Layout
-            VBox content = new VBox(8);
-            content.getChildren().addAll(header, tableView, customerBox, actionBox, new Separator(), billingBox, paymentBox);
-            content.setPadding(new Insets(12));
+            // Billing container with modern styling
+            VBox billingContainer = new VBox(12, subtotalBox, totalBox, separator, actionBox, paymentBox);
+            billingContainer.setStyle("-fx-background-color: white; -fx-padding: 16; -fx-border-radius: 8; " +
+                                    "-fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0.2, 0, 2);");
+
+            // Table with modern styling
+            tableView.setStyle("-fx-background-color: white; -fx-border-radius: 8; -fx-background-radius: 8; " +
+                             "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0.2, 0, 2);");
+
+            // Layout with modern spacing
+            VBox content = new VBox(12);
+            content.setStyle("-fx-background-color: #f9fafb;");
+            content.getChildren().addAll(header, tableView, customerBox, billingContainer);
+            content.setPadding(new Insets(16));
             VBox.setVgrow(tableView, javafx.scene.layout.Priority.ALWAYS);
 
             tab = new javafx.scene.control.Tab("Bill #" + tabNumber, content);
@@ -1212,10 +1802,15 @@ public class BillingController {
 
         private void setPaymentMethod(String method) {
             paymentMethod = method;
+            String defaultStyle = "-fx-background-color: #f3f4f6; -fx-text-fill: #374151; -fx-padding: 8 16; " +
+                                "-fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: 600;";
+            String selectedStyle = "-fx-background-color: #2563eb; -fx-text-fill: white; -fx-padding: 8 16; " +
+                                 "-fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: 600;";
+            
             if (cashBtn != null && cardBtn != null && upiBtn != null) {
-                cashBtn.setStyle(method.equals("Cash") ? PAYMENT_SELECTED_STYLE : "");
-                cardBtn.setStyle(method.equals("Card") ? PAYMENT_SELECTED_STYLE : "");
-                upiBtn.setStyle(method.equals("UPI") ? PAYMENT_SELECTED_STYLE : "");
+                cashBtn.setStyle(method.equals("Cash") ? selectedStyle : defaultStyle);
+                cardBtn.setStyle(method.equals("Card") ? selectedStyle : defaultStyle);
+                upiBtn.setStyle(method.equals("UPI") ? selectedStyle : defaultStyle);
             }
             persistState();
         }

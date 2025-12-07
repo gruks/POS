@@ -4,162 +4,257 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.pos.controller.BillingController">
+<BorderPane xmlns="http://javafx.com/javafx/17" 
+            xmlns:fx="http://javafx.com/fxml/1" 
+            fx:controller="com.example.pos.controller.BillingController"
+            style="-fx-background-color: #f9fafb;">
+    
     <fx:define>
         <ToggleGroup fx:id="categoryGroup"/>
     </fx:define>
     
     <left>
-        <VBox spacing="8" prefWidth="360" styleClass="panel">
+        <VBox spacing="12" 
+              prefWidth="380" 
+              style="-fx-background-color: white; -fx-border-color: #e5e7eb; -fx-border-width: 0 1 0 0;">
+            <padding>
+                <Insets top="16" right="16" bottom="16" left="16"/>
+            </padding>
+            
             <children>
+                <!-- Header -->
+                <VBox spacing="4">
+                    <Label text="Menu Items" 
+                           style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #111827;"/>
+                    <Label text="Select items to add to order" 
+                           style="-fx-font-size: 13px; -fx-text-fill: #6b7280;"/>
+                </VBox>
+                
                 <!-- Order Type Tabs -->
-                <HBox spacing="4" styleClass="tab-container">
+                <HBox spacing="4" 
+                      style="-fx-background-color: #f3f4f6; -fx-padding: 4; -fx-border-radius: 8; -fx-background-radius: 8;">
                     <children>
-                        <ToggleButton fx:id="dineInBtn" text="Dine-In" styleClass="tab-button" selected="true">
+                        <ToggleButton fx:id="dineInBtn" 
+                                     text="Dine-In" 
+                                     selected="true"
+                                     styleClass="order-type-toggle"
+                                     HBox.hgrow="ALWAYS">
                             <toggleGroup>
                                 <ToggleGroup fx:id="orderTypeGroup"/>
                             </toggleGroup>
                         </ToggleButton>
-                        <ToggleButton fx:id="takeawayBtn" text="Takeaway" styleClass="tab-button" toggleGroup="$orderTypeGroup"/>
-                        <ToggleButton fx:id="onlineBtn" text="Online" styleClass="tab-button" toggleGroup="$orderTypeGroup"/>
-                        <ToggleButton fx:id="deliveryBtn" text="Delivery" styleClass="tab-button" toggleGroup="$orderTypeGroup"/>
+                        <ToggleButton fx:id="takeawayBtn" 
+                                     text="Takeaway" 
+                                     toggleGroup="$orderTypeGroup"
+                                     styleClass="order-type-toggle"
+                                     HBox.hgrow="ALWAYS"/>
+                        <ToggleButton fx:id="onlineBtn" 
+                                     text="Online" 
+                                     toggleGroup="$orderTypeGroup"
+                                     styleClass="order-type-toggle"
+                                     HBox.hgrow="ALWAYS"/>
+                        <ToggleButton fx:id="deliveryBtn" 
+                                     text="Delivery" 
+                                     toggleGroup="$orderTypeGroup"
+                                     styleClass="order-type-toggle"
+                                     HBox.hgrow="ALWAYS"/>
                     </children>
                 </HBox>
                 
                 <!-- Table Selection -->
                 <HBox spacing="8" alignment="CENTER_LEFT">
                     <children>
-                        <Label text="Table:"/>
-                        <ComboBox fx:id="tableChoice" promptText="Select table" prefWidth="140"/>
+                        <Label text="Table:" style="-fx-font-weight: 600; -fx-text-fill: #374151;"/>
+                        <ComboBox fx:id="tableChoice" 
+                                 promptText="Select table" 
+                                 prefWidth="200"
+                                 style="-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 6; -fx-background-radius: 6;"/>
                     </children>
                 </HBox>
                 
                 <!-- Search Field -->
-                <TextField fx:id="searchField" promptText="Search items..."/>
+                <TextField fx:id="searchField" 
+                          promptText="🔍 Search items..."
+                          style="-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 12;"/>
                 
                 <!-- Category Filters -->
-                <ScrollPane fitToHeight="true" hbarPolicy="NEVER">
+                <ScrollPane fitToHeight="true" 
+                           hbarPolicy="NEVER"
+                           style="-fx-background: transparent; -fx-border-color: transparent;">
                     <content>
-                        <HBox spacing="4" styleClass="category-container">
-                            <children>
-                                <FlowPane fx:id="categoryFilterPane" hgap="8" vgap="8" />
-                            </children>
-                        </HBox>
+                        <FlowPane fx:id="categoryFilterPane" 
+                                 hgap="8" 
+                                 vgap="8"
+                                 style="-fx-padding: 4;"/>
                     </content>
                 </ScrollPane>
                 
                 <!-- Menu Items Grid -->
-                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+                <ScrollPane fitToWidth="true" 
+                           VBox.vgrow="ALWAYS"
+                           style="-fx-background: transparent; -fx-border-color: transparent;">
                     <content>
-                        <TilePane fx:id="menuGrid" hgap="12" vgap="12" prefColumns="3" style="-fx-padding:8;"/>
+                        <TilePane fx:id="menuGrid" 
+                                 hgap="12" 
+                                 vgap="12" 
+                                 prefColumns="3"
+                                 prefTileWidth="105"
+                                 prefTileHeight="140"
+                                 style="-fx-padding: 4;"/>
                     </content>
                 </ScrollPane>
             </children>
-            <padding><Insets top="12" left="12" right="12" bottom="12"/></padding>
         </VBox>
     </left>
     
     <center>
-        <TabPane fx:id="billTabs" tabClosingPolicy="ALL_TABS">
+        <TabPane fx:id="billTabs" 
+                tabClosingPolicy="ALL_TABS"
+                style="-fx-background-color: #f9fafb;">
             <tabs>
-                <Tab text="Bill #1" closable="true">
+                <Tab text="Bill #1" closable="false">
                     <content>
-                        <VBox spacing="8">
-            <children>
-                <!-- Order Header -->
-                <HBox spacing="8" alignment="CENTER_LEFT" styleClass="order-header">
-                    <children>
-                        <Label text="Current Order" styleClass="section-title"/>
-                        <Region HBox.hgrow="ALWAYS"/>
-                        <Label fx:id="billNumberLabel" text="Bill #12345" styleClass="bill-number"/>
-                        <Label fx:id="orderDateLabel" text="2025-10-09 18:49" styleClass="order-date"/>
-                    </children>
-                </HBox>
-                
-                <!-- Order Items Table -->
-                <TableView fx:id="orderTableView" VBox.vgrow="ALWAYS">
-                    <columns>
-                        <TableColumn fx:id="itemColumn" text="Item" prefWidth="240"/>
-                        <TableColumn fx:id="qtyColumn" text="Qty" prefWidth="80"/>
-                        <TableColumn fx:id="priceColumn" text="Price" prefWidth="120"/>
-                        <TableColumn fx:id="totalColumn" text="Total" prefWidth="120"/>
-                        <TableColumn fx:id="actionsColumn" text="Actions" prefWidth="120"/>
-                    </columns>
-                    <placeholder>
-                        <VBox alignment="CENTER" spacing="8">
+                        <VBox spacing="12" style="-fx-background-color: #f9fafb;">
+                            <padding>
+                                <Insets top="16" right="16" bottom="16" left="16"/>
+                            </padding>
+                            
                             <children>
-                                <Label text="🛒" style="-fx-font-size: 48px;"/>
-                                <Label text="No items added yet" styleClass="placeholder-text"/>
-                                <Label text="Click on items to add them to the bill" styleClass="placeholder-subtext"/>
+                                <!-- Order Header -->
+                                <HBox spacing="12" 
+                                     alignment="CENTER_LEFT"
+                                     style="-fx-background-color: white; -fx-padding: 12; -fx-border-radius: 8; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0.2, 0, 2);">
+                                    <children>
+                                        <Label text="Current Order" 
+                                              style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #111827;"/>
+                                        <Region HBox.hgrow="ALWAYS"/>
+                                        <VBox alignment="CENTER_RIGHT" spacing="2">
+                                            <Label fx:id="billNumberLabel" 
+                                                  text="Bill #12345" 
+                                                  style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #2563eb;"/>
+                                            <Label fx:id="orderDateLabel" 
+                                                  text="" 
+                                                  style="-fx-font-size: 12px; -fx-text-fill: #6b7280;"/>
+                                        </VBox>
+                                    </children>
+                                </HBox>
+                                
+                                <!-- Order Items Table -->
+                                <TableView fx:id="orderTableView" 
+                                          VBox.vgrow="ALWAYS"
+                                          style="-fx-background-color: white; -fx-border-radius: 8; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0.2, 0, 2);">
+                                    <columns>
+                                        <TableColumn fx:id="itemColumn" text="Item" prefWidth="280"/>
+                                        <TableColumn fx:id="qtyColumn" text="Qty" prefWidth="80"/>
+                                        <TableColumn fx:id="priceColumn" text="Price" prefWidth="120"/>
+                                        <TableColumn fx:id="totalColumn" text="Total" prefWidth="120"/>
+                                        <TableColumn fx:id="actionsColumn" text="Actions" prefWidth="140"/>
+                                    </columns>
+                                    <placeholder>
+                                        <VBox alignment="CENTER" spacing="12" style="-fx-padding: 40;">
+                                            <Label text="🛒" style="-fx-font-size: 48px;"/>
+                                            <Label text="No items added yet" 
+                                                   style="-fx-font-size: 16px; -fx-font-weight: 600; -fx-text-fill: #374151;"/>
+                                            <Label text="Click on items from the menu to add them to the bill" 
+                                                   style="-fx-font-size: 14px; -fx-text-fill: #6b7280;"/>
+                                        </VBox>
+                                    </placeholder>
+                                </TableView>
+                                
+                                <!-- Customer Info -->
+                                <HBox spacing="8" 
+                                     alignment="CENTER_LEFT"
+                                     style="-fx-background-color: white; -fx-padding: 12; -fx-border-radius: 8; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0.2, 0, 2);">
+                                    <children>
+                                        <Label text="Customer:" style="-fx-font-weight: 600; -fx-text-fill: #374151;"/>
+                                        <TextField fx:id="customerNameField" 
+                                                  promptText="Customer name (optional)" 
+                                                  HBox.hgrow="ALWAYS"
+                                                  style="-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 12;"/>
+                                    </children>
+                                </HBox>
+                                
+                                <!-- Billing Summary and Actions -->
+                                <VBox spacing="12" 
+                                     style="-fx-background-color: white; -fx-padding: 16; -fx-border-radius: 8; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0.2, 0, 2);">
+                                    <children>
+                                        <!-- Subtotal and Tax -->
+                                        <HBox spacing="12" alignment="CENTER_RIGHT">
+                                            <children>
+                                                <Label text="Subtotal:" style="-fx-font-size: 14px; -fx-text-fill: #6b7280;"/>
+                                                <Label fx:id="subtotalLabel" 
+                                                      text="₹0.00" 
+                                                      style="-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: #111827;"/>
+                                                <Region prefWidth="40"/>
+                                                <Label text="Tax (5%):" style="-fx-font-size: 14px; -fx-text-fill: #6b7280;"/>
+                                                <Label fx:id="taxLabel" 
+                                                      text="₹0.00" 
+                                                      style="-fx-font-size: 14px; -fx-font-weight: 600; -fx-text-fill: #111827;"/>
+                                            </children>
+                                        </HBox>
+                                        
+                                        <!-- Total -->
+                                        <HBox spacing="12" alignment="CENTER_RIGHT">
+                                            <children>
+                                                <Label text="Total:" 
+                                                      style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #111827;"/>
+                                                <Label fx:id="totalLabel" 
+                                                      text="₹0.00" 
+                                                      style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #2563eb;"/>
+                                            </children>
+                                        </HBox>
+                                        
+                                        <Separator/>
+                                        
+                                        <!-- Action Buttons -->
+                                        <HBox spacing="8" alignment="CENTER_RIGHT">
+                                            <children>
+                                                <Button fx:id="discountBtn" 
+                                                       text="💰 Discount"
+                                                       style="-fx-background-color: #f3f4f6; -fx-text-fill: #374151; -fx-padding: 8 16; -fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: 600;"/>
+                                                <Button fx:id="couponBtn" 
+                                                       text="🎫 Coupon"
+                                                       style="-fx-background-color: #f3f4f6; -fx-text-fill: #374151; -fx-padding: 8 16; -fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: 600;"/>
+                                                <Region HBox.hgrow="ALWAYS"/>
+                                                <Button fx:id="newBillBtn" 
+                                                       text="+ New Bill"
+                                                       style="-fx-background-color: #6b7280; -fx-text-fill: white; -fx-padding: 8 16; -fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: 600;"/>
+                                                <Button fx:id="kotBtn" 
+                                                       text="📋 KOT"
+                                                       style="-fx-background-color: #f59e0b; -fx-text-fill: white; -fx-padding: 8 16; -fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: 600;"/>
+                                                <Button fx:id="saveBtn" 
+                                                       text="🖨 Print"
+                                                       style="-fx-background-color: #10b981; -fx-text-fill: white; -fx-padding: 8 16; -fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: 600;"/>
+                                            </children>
+                                        </HBox>
+                                        
+                                        <!-- Payment Buttons -->
+                                        <HBox spacing="8" alignment="CENTER_RIGHT">
+                                            <children>
+                                                <Label text="Payment Method:" 
+                                                      style="-fx-font-weight: 600; -fx-text-fill: #374151;"/>
+                                                <Button fx:id="cashBtn" 
+                                                       text="💵 Cash"
+                                                       style="-fx-background-color: #f3f4f6; -fx-text-fill: #374151; -fx-padding: 8 16; -fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: 600;"/>
+                                                <Button fx:id="cardBtn" 
+                                                       text="💳 Card"
+                                                       style="-fx-background-color: #f3f4f6; -fx-text-fill: #374151; -fx-padding: 8 16; -fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: 600;"/>
+                                                <Button fx:id="upiBtn" 
+                                                       text="📱 UPI"
+                                                       style="-fx-background-color: #f3f4f6; -fx-text-fill: #374151; -fx-padding: 8 16; -fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: 600;"/>
+                                                <Region HBox.hgrow="ALWAYS"/>
+                                                <Button fx:id="settleBtn" 
+                                                       text="✓ Settle Bill"
+                                                       style="-fx-background-color: #2563eb; -fx-text-fill: white; -fx-padding: 12 24; -fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: bold; -fx-font-size: 14px;"/>
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
                             </children>
-                        </VBox>
-                    </placeholder>
-                </TableView>
-                
-                <!-- Customer Info -->
-                <HBox spacing="8" alignment="CENTER_LEFT">
-                    <children>
-                        <Label text="Customer:"/>
-                        <TextField fx:id="customerNameField" promptText="Customer name (optional)" HBox.hgrow="ALWAYS"/>
-                    </children>
-                </HBox>
-                
-                <!-- Billing Summary and Actions -->
-                <VBox spacing="8" styleClass="billing-section">
-                    <children>
-                        <!-- Subtotal and Tax -->
-                        <HBox spacing="8" alignment="CENTER_RIGHT">
-                            <children>
-                                <Label text="Subtotal:"/>
-                                <Label fx:id="subtotalLabel" text="₹0.00" styleClass="metric"/>
-                                <Region prefWidth="20"/>
-                                <Label text="Tax (5%):"/>
-                                <Label fx:id="taxLabel" text="₹0.00" styleClass="metric"/>
-                            </children>
-                        </HBox>
-                        
-                        <!-- Total -->
-                        <HBox spacing="8" alignment="CENTER_RIGHT">
-                            <children>
-                                <Label text="Total:" styleClass="total-label"/>
-                                <Label fx:id="totalLabel" text="₹0.00" styleClass="total-value"/>
-                            </children>
-                        </HBox>
-                        
-                        <Separator/>
-                        
-                        <!-- Action Buttons -->
-                        <HBox spacing="8" alignment="CENTER_RIGHT">
-                            <children>
-                                <Button fx:id="discountBtn" text="Discount"/>
-                                <Button fx:id="couponBtn" text="Coupon"/>
-                                <Region HBox.hgrow="ALWAYS"/>
-                                <Button fx:id="newBillBtn" text="New Bill" styleClass="secondary-button"/>
-                                <Button fx:id="kotBtn" text="KOT" styleClass="secondary-button"/>
-                                <Button fx:id="saveBtn" text="Save" styleClass="secondary-button"/>
-                            </children>
-                        </HBox>
-                        
-                        <!-- Payment Buttons -->
-                        <HBox spacing="8" alignment="CENTER_RIGHT">
-                            <children>
-                                <Label text="Payment:"/>
-                                <Button fx:id="cashBtn" text="Cash" styleClass="payment-button"/>
-                                <Button fx:id="cardBtn" text="Card" styleClass="payment-button"/>
-                                <Button fx:id="upiBtn" text="UPI" styleClass="payment-button"/>
-                                <Region HBox.hgrow="ALWAYS"/>
-                                <Button fx:id="settleBtn" text="Settle Bill" styleClass="primary-button"/>
-                            </children>
-                        </HBox>
-                    </children>
-                </VBox>
-            </children>
-            <padding><Insets top="12" left="12" right="12" bottom="12"/></padding>
                         </VBox>
                     </content>
                 </Tab>
             </tabs>
         </TabPane>
     </center>
-    
 </BorderPane>

@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -54,9 +55,11 @@ public class SalesService {
              PreparedStatement ps = connection.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
+                Timestamp timestamp = rs.getTimestamp("created_at");
+                LocalDateTime createdAt = timestamp != null ? timestamp.toLocalDateTime() : LocalDateTime.now();
                 transactions.add(new Transaction(
                         String.valueOf(rs.getLong("bill_number")),
-                        rs.getObject("created_at", LocalDateTime.class),
+                        createdAt,
                         rs.getString("customer_name"),
                         rs.getString("order_type"),
                         (int) Math.round(rs.getDouble("total")),
@@ -85,7 +88,7 @@ public class SalesService {
             ps.setDouble(6, request.tax());
             ps.setDouble(7, request.total());
             ps.setString(8, request.status());
-            ps.setObject(9, Instant.now());
+            ps.setTimestamp(9, Timestamp.from(Instant.now()));
             if (request.tableId() == null) {
                 ps.setNull(10, java.sql.Types.BIGINT);
             } else {

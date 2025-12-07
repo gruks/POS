@@ -1,0 +1,64 @@
+========================================
+  HOW TO RUN THE POS APPLICATION
+========================================
+
+EASIEST WAY - Just double-click this file:
+
+    START-POS.bat
+
+That's it! The application window will open.
+
+
+OTHER WAYS TO RUN:
+
+Method 1: PowerShell Script
+    Right-click on: run-pos.ps1
+    Select: "Run with PowerShell"
+
+Method 2: Command Prompt (if Maven is in PATH)
+    Open Command Prompt in this folder
+    Run: mvn javafx:run
+
+Method 3: Direct Maven Path
+    Open Command Prompt in this folder
+    Run: "C:\Program Files\Apache\Maven\apache-maven-3.9.11-bin\apache-maven-3.9.11\bin\mvn.cmd" javafx:run
+
+
+TROUBLESHOOTING:
+
+If START-POS.bat doesn't work:
+1. Make sure Java is installed
+2. Make sure Maven is installed
+3. Make sure PostgreSQL is running
+4. Check .env file exists with correct database credentials
+
+For detailed help, see:
+- QUICK_START.md
+- MAVEN_PATH_FIX.md
+- README.md
+
+
+FIRST TIME SETUP:
+
+1. Configure Restaurant Info:
+   - Click "Restaurant Info" button in the app
+   - Fill in all required fields
+   - Save
+
+2. Add Menu Items:
+   - Go to Menu view
+   - Add your menu items
+
+3. Add Tables:
+   - Go to Tables view
+   - Add tables for your restaurant
+
+4. Start taking orders!
+
+
+SUPPORT:
+
+If you have issues:
+- Run: check-requirements.bat (to verify installation)
+- Run: system-diagnostics.bat (for detailed diagnostics)
+- Check the documentation files in this folder

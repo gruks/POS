@@ -3,6 +3,8 @@ module com.example.pos {
     requires javafx.fxml;
     requires javafx.graphics;
     requires java.sql;
+    requires com.zaxxer.hikari;
+    requires java.desktop; // For javax.print (thermal printer support)
 
     opens com.example.pos to javafx.fxml;
     opens com.example.pos.controller to javafx.fxml;

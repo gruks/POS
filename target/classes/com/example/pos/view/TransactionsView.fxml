@@ -72,6 +72,17 @@
                 <TableColumn fx:id="colStatus" text="Status" prefWidth="120"/>
                 <TableColumn fx:id="colActions" text="Actions" prefWidth="160"/>
             </columns>
+            <placeholder>
+                <VBox alignment="CENTER" spacing="12" style="-fx-padding: 40;">
+                    <children>
+                        <Label text="📊" style="-fx-font-size: 48px;"/>
+                        <Label text="No transactions found" 
+                               style="-fx-font-size: 16px; -fx-font-weight: 600; -fx-text-fill: #374151;"/>
+                        <Label text="Transactions will appear here once you start making sales" 
+                               style="-fx-font-size: 14px; -fx-text-fill: #6b7280;"/>
+                    </children>
+                </VBox>
+            </placeholder>
         </TableView>
         
         <!-- Results Summary -->

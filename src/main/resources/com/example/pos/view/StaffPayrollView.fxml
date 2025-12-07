@@ -40,28 +40,28 @@
             <VBox styleClass="card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
                 <children>
                     <Label text="Total Employees" styleClass="card-title"/>
-                    <Label text="6" styleClass="card-value"/>
+                    <Label fx:id="lblTotalEmployees" text="0" styleClass="card-value"/>
                 </children>
             </VBox>
 
             <VBox styleClass="card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
                 <children>
                     <Label text="Checked-in Today" styleClass="card-title"/>
-                    <Label text="4" styleClass="card-value"/>
+                    <Label fx:id="lblCheckedInToday" text="0" styleClass="card-value"/>
                 </children>
             </VBox>
 
             <VBox styleClass="card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
                 <children>
                     <Label text="On Leave" styleClass="card-title"/>
-                    <Label text="1" styleClass="card-value"/>
+                    <Label fx:id="lblOnLeave" text="0" styleClass="card-value"/>
                 </children>
             </VBox>
 
             <VBox styleClass="card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
                 <children>
                     <Label text="Pending Salary" styleClass="card-title"/>
-                    <Label text="₹45,000" styleClass="card-value"/>
+                    <Label fx:id="lblPendingSalary" text="₹0" styleClass="card-value"/>
                 </children>
             </VBox>
         </children>
@@ -105,8 +105,30 @@
                 <content>
                     <VBox spacing="12">
                         <children>
-                            <Label text="Payroll Management" styleClass="section-title"/>
-                            <Label text="Payroll features will be implemented here" styleClass="placeholder-text"/>
+                            <!-- Month Selector -->
+                            <HBox spacing="12" alignment="CENTER_LEFT">
+                                <children>
+                                    <Label text="Select Month:" styleClass="section-title"/>
+                                    <ComboBox fx:id="monthSelector" prefWidth="150"/>
+                                    <Button fx:id="btnCalculatePayroll" text="Calculate Payroll" styleClass="primary-button"/>
+                                    <Region HBox.hgrow="ALWAYS"/>
+                                    <Button fx:id="btnPaySalary" text="Pay Salary" styleClass="primary-button"/>
+                                </children>
+                            </HBox>
+
+                            <!-- Payroll Table -->
+                            <TableView fx:id="payrollTable" prefHeight="400">
+                                <columns>
+                                    <TableColumn fx:id="colPayrollName" text="Name" prefWidth="150"/>
+                                    <TableColumn fx:id="colPayrollRole" text="Role" prefWidth="100"/>
+                                    <TableColumn fx:id="colMonthlySalary" text="Monthly Salary" prefWidth="120"/>
+                                    <TableColumn fx:id="colDaysWorked" text="Days Worked" prefWidth="100"/>
+                                    <TableColumn fx:id="colEarnedSalary" text="Earned Salary" prefWidth="120"/>
+                                    <TableColumn fx:id="colAdvancePaid" text="Advance Paid" prefWidth="120"/>
+                                    <TableColumn fx:id="colPendingSalary" text="Pending Salary" prefWidth="120"/>
+                                    <TableColumn fx:id="colPayrollStatus" text="Status" prefWidth="100"/>
+                                </columns>
+                            </TableView>
                         </children>
                     </VBox>
                 </content>

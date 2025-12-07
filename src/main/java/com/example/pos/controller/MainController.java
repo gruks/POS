@@ -37,6 +37,8 @@ public class MainController {
     private Button navReports;
     @FXML
     private Button navStaffPayroll;
+    @FXML
+    private Button profileBtn;
 
     @FXML
     public void initialize() {
@@ -90,6 +92,11 @@ public class MainController {
     @FXML
     private void onOpenStaffPayroll() {
         loadView("StaffPayrollView.fxml");
+    }
+
+    @FXML
+    private void onOpenRestaurantInfo() {
+        loadView("RestaurantInfoView.fxml");
     }
 
     private void loadView(String fxmlName) {

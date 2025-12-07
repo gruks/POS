@@ -47,6 +47,7 @@ public class MenuService {
                        i.description,
                        i.image_url,
                        i.category_id,
+                       i.tax_rate,
                        c.name AS category_name
                 FROM menu_items i
                 LEFT JOIN menu_categories c ON c.id = i.category_id
@@ -123,8 +124,8 @@ public class MenuService {
     public MenuProduct createProduct(MenuProduct product) {
         Objects.requireNonNull(product, "Product required");
         String sql = """
-                INSERT INTO menu_items (name, price, quantity, description, image_url, category_id)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO menu_items (name, price, quantity, description, image_url, category_id, tax_rate)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """;
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -134,6 +135,7 @@ public class MenuService {
             ps.setString(4, product.getDescription());
             ps.setString(5, product.getImageUrl());
             ps.setLong(6, product.getCategoryId());
+            ps.setDouble(7, product.getTaxRate());
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -150,7 +152,7 @@ public class MenuService {
         Objects.requireNonNull(product, "Product required");
         String sql = """
                 UPDATE menu_items
-                SET name = ?, price = ?, quantity = ?, description = ?, image_url = ?, category_id = ?
+                SET name = ?, price = ?, quantity = ?, description = ?, image_url = ?, category_id = ?, tax_rate = ?
                 WHERE id = ?
                 """;
         try (Connection connection = DatabaseConnection.getConnection();
@@ -161,7 +163,8 @@ public class MenuService {
             ps.setString(4, product.getDescription());
             ps.setString(5, product.getImageUrl());
             ps.setLong(6, product.getCategoryId());
-            ps.setLong(7, product.getId());
+            ps.setDouble(7, product.getTaxRate());
+            ps.setLong(8, product.getId());
             ps.executeUpdate();
         } catch (SQLException ex) {
             throw new IllegalStateException("Failed to update menu item", ex);
@@ -266,6 +269,7 @@ public class MenuService {
                        i.description,
                        i.image_url,
                        i.category_id,
+                       i.tax_rate,
                        c.name AS category_name
                 FROM menu_items i
                 LEFT JOIN menu_categories c ON c.id = i.category_id
@@ -285,6 +289,12 @@ public class MenuService {
     private MenuProduct mapProduct(ResultSet rs) throws SQLException {
         long id = rs.getLong("id");
         long categoryId = rs.getObject("category_id") == null ? 0 : rs.getLong("category_id");
+        double taxRate = 5.0; // default
+        try {
+            taxRate = rs.getDouble("tax_rate");
+        } catch (SQLException e) {
+            // Column might not exist in older databases
+        }
         return new MenuProduct(
                 id,
                 rs.getString("name"),
@@ -293,7 +303,8 @@ public class MenuService {
                 categoryId,
                 rs.getInt("quantity"),
                 rs.getString("description"),
-                rs.getString("image_url"));
+                rs.getString("image_url"),
+                taxRate);
     }
 }
 

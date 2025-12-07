@@ -59,10 +59,32 @@ public class TablesController {
 
     private void loadTables() {
         try {
-            tables.setAll(tableService.loadTables());
+            System.out.println("TablesController: Loading tables from database...");
+            List<TableModel> loadedTables = tableService.loadTables();
+            System.out.println("TablesController: Loaded " + loadedTables.size() + " tables successfully");
+            tables.setAll(loadedTables);
+            
+            if (loadedTables.isEmpty()) {
+                System.out.println("TablesController: No tables found in database");
+                showAlert("No Tables Found", 
+                    "No tables exist in the database.\n\n" +
+                    "Click '+ Add New Table' to create tables, or\n" +
+                    "Run: mvn exec:java -Dexec.mainClass=\"com.example.pos.db.DatabaseInitializer\"");
+            }
         } catch (Exception ex) {
+            System.err.println("TablesController: Failed to load tables - " + ex.getClass().getSimpleName());
+            System.err.println("TablesController: Error message: " + ex.getMessage());
+            ex.printStackTrace();
             logError("Unable to load tables", ex);
-            showAlert("Unable to load tables", ex.getMessage());
+            
+            // Show user-friendly error with solution
+            showAlert("Unable to Load Tables", 
+                "Failed to load tables from database.\n\n" +
+                "Solutions:\n" +
+                "1. Click the 'Refresh' button to try again\n" +
+                "2. Click '+ Add New Table' to create tables manually\n" +
+                "3. Check console for detailed error\n\n" +
+                "Error: " + ex.getMessage());
         }
     }
 
@@ -268,16 +290,23 @@ public class TablesController {
         try {
             if (existing == null) {
                 TableModel created = tableService.createTable(result.get());
-                tables.add(created);
+                if (created != null) {
+                    tables.add(created);
+                } else {
+                    // Reload all tables if creation succeeded but model wasn't returned
+                    loadTables();
+                }
             } else {
                 tableService.updateTable(existing.getId(), result.get());
                 loadTables();
             }
             createTableCards();
             updateSummaryCards();
+            showAlert("Success", existing == null ? "Table added successfully!" : "Table updated successfully!");
         } catch (Exception ex) {
             logError("Failed to save table", ex);
-            showAlert("Failed to save table", ex.getMessage());
+            showAlert("Error", "Failed to save table: " + ex.getMessage());
+            ex.printStackTrace();
         }
     }
 

@@ -34,7 +34,7 @@
             <!-- Summary Cards -->
             <HBox fx:id="summaryCardsRow" spacing="16">
                 <children>
-                    <VBox styleClass="summary-card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
+                    <VBox fx:id="cardTotalSales" styleClass="summary-card, clickable-card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
                         <children>
                             <HBox spacing="8" alignment="CENTER_LEFT">
                                 <children>
@@ -42,16 +42,16 @@
                                     <HBox spacing="4" alignment="CENTER_LEFT">
                                         <children>
                                             <Polygon points="0, 0, 0, 8, 6, 4" fill="#22c55e" styleClass="trend-arrow"/>
-                                            <Label text="+12%" styleClass="trend-text positive"/>
+                                            <Label fx:id="lblSalesGrowth" text="" styleClass="trend-text positive"/>
                                         </children>
                                     </HBox>
                                 </children>
                             </HBox>
-                            <Label text="₹45,280" styleClass="summary-value"/>
+                            <Label fx:id="lblTotalSales" text="₹0" styleClass="summary-value"/>
                         </children>
                     </VBox>
 
-                    <VBox styleClass="summary-card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
+                    <VBox fx:id="cardTotalOrders" styleClass="summary-card, clickable-card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
                         <children>
                             <HBox spacing="8" alignment="CENTER_LEFT">
                                 <children>
@@ -59,16 +59,16 @@
                                     <HBox spacing="4" alignment="CENTER_LEFT">
                                         <children>
                                             <Polygon points="0, 0, 0, 8, 6, 4" fill="#22c55e" styleClass="trend-arrow"/>
-                                            <Label text="↑ 12.5%" styleClass="trend-text positive"/>
+                                            <Label fx:id="lblOrdersGrowth" text="" styleClass="trend-text positive"/>
                                         </children>
                                     </HBox>
                                 </children>
                             </HBox>
-                            <Label text="156" styleClass="summary-value"/>
+                            <Label fx:id="lblTotalOrders" text="0" styleClass="summary-value"/>
                         </children>
                     </VBox>
 
-                    <VBox styleClass="summary-card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
+                    <VBox fx:id="cardPendingOrders" styleClass="summary-card, clickable-card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
                         <children>
                             <HBox spacing="8" alignment="CENTER_LEFT">
                                 <children>
@@ -76,16 +76,16 @@
                                     <HBox spacing="4" alignment="CENTER_LEFT">
                                         <children>
                                             <Polygon points="0, 0, 0, 8, 6, 4" fill="#f59e0b" styleClass="trend-arrow"/>
-                                            <Label text="↑ 8.2%" styleClass="trend-text warning"/>
+                                            <Label fx:id="lblPendingGrowth" text="" styleClass="trend-text warning"/>
                                         </children>
                                     </HBox>
                                 </children>
                             </HBox>
-                            <Label text="12" styleClass="summary-value"/>
+                            <Label fx:id="lblPendingOrders" text="0" styleClass="summary-value"/>
                         </children>
                     </VBox>
 
-                    <VBox styleClass="summary-card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
+                    <VBox fx:id="cardActiveTables" styleClass="summary-card, clickable-card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
                         <children>
                             <HBox spacing="8" alignment="CENTER_LEFT">
                                 <children>
@@ -93,11 +93,11 @@
                                     <Rectangle width="16" height="16" fill="#6b7280" styleClass="icon-rect"/>
                                 </children>
                             </HBox>
-                            <Label text="18/25" styleClass="summary-value"/>
+                            <Label fx:id="lblActiveTables" text="0/0" styleClass="summary-value"/>
                         </children>
                     </VBox>
 
-                    <VBox styleClass="summary-card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
+                    <VBox fx:id="cardLowStock" styleClass="summary-card, clickable-card" alignment="TOP_LEFT" spacing="6" HBox.hgrow="ALWAYS">
                         <children>
                             <HBox spacing="8" alignment="CENTER_LEFT">
                                 <children>
@@ -105,7 +105,7 @@
                                     <Rectangle width="16" height="16" fill="#6b7280" styleClass="icon-rect"/>
                                 </children>
                             </HBox>
-                            <Label text="8" styleClass="summary-value"/>
+                            <Label fx:id="lblLowStockItems" text="0" styleClass="summary-value"/>
                         </children>
                     </VBox>
                 </children>

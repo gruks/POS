@@ -263,6 +263,8 @@ public class MenuController {
 
         TextField name = new TextField(initial == null ? "" : initial.getName());
         TextField price = new TextField(initial == null ? "" : String.valueOf(initial.getPrice()));
+        TextField taxRate = new TextField(initial == null ? "5.0" : String.valueOf(initial.getTaxRate()));
+        taxRate.setPromptText("Tax % (e.g., 5.0 for 5%)");
         ChoiceBox<String> category = new ChoiceBox<>(FXCollections.observableArrayList(categoryNames).filtered(c -> !"All".equals(c)));
         if (initial == null) category.setValue(category.getItems().isEmpty() ? null : category.getItems().get(0));
         else category.setValue(initial.getCategory());
@@ -293,24 +295,26 @@ public class MenuController {
         grid.setHgap(8); grid.setVgap(8);
         grid.addRow(0, new Label("Name"), name);
         grid.addRow(1, new Label("Price"), price);
-        grid.addRow(2, new Label("Category"), category);
-        grid.addRow(3, new Label("Quantity"), qty);
-        grid.addRow(4, new Label("Image"), new HBox(8, imageField, browseImage));
+        grid.addRow(2, new Label("Tax Rate (%)"), taxRate);
+        grid.addRow(3, new Label("Category"), category);
+        grid.addRow(4, new Label("Quantity"), qty);
+        grid.addRow(5, new Label("Image"), new HBox(8, imageField, browseImage));
         dialog.getDialogPane().setContent(grid);
 
         dialog.setResultConverter(btn -> {
             if (btn == ButtonType.OK) {
                 try {
                     double p = Double.parseDouble(price.getText().trim());
+                    double tax = Double.parseDouble(taxRate.getText().trim());
                     String n = name.getText().trim();
                     String c = category.getValue();
                     int qv = qty.getValue();
                     if (n.isEmpty() || c == null) return null;
                     String img = imageField.getText() == null ? null : imageField.getText().trim();
                     long catId = getCategoryIdByName(c);
-                    return new MenuProduct(initial == null ? 0 : initial.getId(), n, p, c, catId, qv, null, img);
+                    return new MenuProduct(initial == null ? 0 : initial.getId(), n, p, c, catId, qv, null, img, tax);
                 } catch (NumberFormatException ex) {
-                    new Alert(Alert.AlertType.ERROR, "Invalid price").showAndWait();
+                    new Alert(Alert.AlertType.ERROR, "Invalid price or tax rate").showAndWait();
                     return null;
                 }
             }

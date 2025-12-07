@@ -5,6 +5,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -84,8 +85,8 @@ public class TableService {
             ps.setString(3, normalizeStatus(data.status()));
             ps.setString(4, data.isReserved() ? data.reservedFor() : null);
             ps.setString(5, data.isReserved() ? data.reservationTime() : null);
-            ps.setObject(6, now);
-            ps.setObject(7, now);
+            ps.setTimestamp(6, Timestamp.from(now));
+            ps.setTimestamp(7, Timestamp.from(now));
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -114,7 +115,7 @@ public class TableService {
             ps.setString(3, normalizeStatus(data.status()));
             ps.setString(4, data.isReserved() ? data.reservedFor() : null);
             ps.setString(5, data.isReserved() ? data.reservationTime() : null);
-            ps.setObject(6, Instant.now());
+            ps.setTimestamp(6, Timestamp.from(Instant.now()));
             ps.setLong(7, Long.parseLong(id));
             ps.executeUpdate();
         } catch (SQLException ex) {
@@ -173,6 +174,18 @@ public class TableService {
                     return null;
                 }
                 List<TableSessionItem> items = loadSessionItems(connection, Long.parseLong(tableId));
+                
+                // Convert TIMESTAMPTZ to LocalDateTime
+                LocalDateTime updatedAt = null;
+                try {
+                    java.sql.Timestamp timestamp = rs.getTimestamp("updated_at");
+                    if (timestamp != null) {
+                        updatedAt = timestamp.toLocalDateTime();
+                    }
+                } catch (SQLException e) {
+                    System.err.println("Warning: Could not parse updated_at: " + e.getMessage());
+                }
+                
                 return new TableSession(
                         tableId,
                         rs.getString("name"),
@@ -182,7 +195,7 @@ public class TableService {
                         rs.getString("order_type"),
                         items,
                         rs.getString("status"),
-                        rs.getObject("updated_at", LocalDateTime.class));
+                        updatedAt);
             }
         } catch (SQLException ex) {
             throw new IllegalStateException("Failed to load table session", ex);
@@ -272,10 +285,17 @@ public class TableService {
             model.setActiveBillLabel(billLabel);
             model.setStatus("Occupied");
             model.setGuests(rs.getString("customer_name") != null ? rs.getString("customer_name") : "");
-            LocalDateTime updated = rs.getObject("updated_at", LocalDateTime.class);
-            if (updated != null) {
-                String duration = updated.atZone(ZoneId.systemDefault()).toLocalTime().format(DISPLAY_TIME);
-                model.setDuration(duration);
+            try {
+                // Try to get as Timestamp first (PostgreSQL TIMESTAMPTZ)
+                java.sql.Timestamp timestamp = rs.getTimestamp("updated_at");
+                if (timestamp != null) {
+                    LocalDateTime updated = timestamp.toLocalDateTime();
+                    String duration = updated.atZone(ZoneId.systemDefault()).toLocalTime().format(DISPLAY_TIME);
+                    model.setDuration(duration);
+                }
+            } catch (SQLException e) {
+                // If timestamp conversion fails, just skip duration
+                System.err.println("Warning: Could not parse updated_at timestamp: " + e.getMessage());
             }
         }
         return model;
@@ -353,7 +373,7 @@ public class TableService {
         try (PreparedStatement ps = connection.prepareStatement(
                 "UPDATE restaurant_tables SET status = ?, updated_at = ? WHERE id = ?")) {
             ps.setString(1, normalizeStatus(newStatus));
-            ps.setObject(2, Instant.now());
+            ps.setTimestamp(2, Timestamp.from(Instant.now()));
             ps.setLong(3, tableId);
             ps.executeUpdate();
         }

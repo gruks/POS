@@ -14,13 +14,14 @@ public class MenuProduct {
     private int quantity;          // Stock or available quantity
     private String description;    // Optional product description (new feature)
     private String imageUrl;       // Optional image URL (for UI display)
+    private double taxRate;        // Tax rate percentage (e.g., 5.0 for 5%)
 
     // ---------- Constructors ----------
 
     public MenuProduct() { }
 
     public MenuProduct(long id, String name, double price, String category,
-                       long categoryId, int quantity, String description, String imageUrl) {
+                       long categoryId, int quantity, String description, String imageUrl, double taxRate) {
         this.id = id;
         this.name = name;
         this.price = price;
@@ -29,6 +30,7 @@ public class MenuProduct {
         this.quantity = quantity;
         this.description = description;
         this.imageUrl = imageUrl;
+        this.taxRate = taxRate;
     }
 
     // ---------- Getters & Setters ----------
@@ -57,6 +59,9 @@ public class MenuProduct {
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 
+    public double getTaxRate() { return taxRate; }
+    public void setTaxRate(double taxRate) { this.taxRate = taxRate; }
+
     // ---------- Utility ----------
 
     @Override
@@ -70,6 +75,7 @@ public class MenuProduct {
                 ", quantity=" + quantity +
                 ", description='" + description + '\'' +
                 ", imageUrl='" + imageUrl + '\'' +
+                ", taxRate=" + taxRate +
                 '}';
     }
 }
