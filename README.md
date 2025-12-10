@@ -219,7 +219,6 @@ This POS system is a full-featured restaurant management application that stream
 
 6. Build the Project:
    ```
-   cd gruks
    mvn clean package
    ```
 
@@ -633,10 +632,6 @@ java -jar target/pos-desktop-0.1.0.jar
 - README.md - This file (complete documentation)
 - HOW_TO_RUN.txt - Simple running instructions
 - QUICK_START.md - Quick start guide
-- SETUP_GUIDE.md - Detailed setup instructions
-- MAVEN_PATH_FIX.md - Maven troubleshooting
-- THERMAL_PRINTER_GUIDE.md - Printer setup guide
-- BATCH_SCRIPTS_GUIDE.md - All batch scripts explained
 
 ---
 
